@@ -252,7 +252,7 @@ const fs = require('fs'),
 				});
 			});
 		},
-		help: async function(){
+		help: async function () {
 			return Promise.resolve('available commands: ' + Object.keys(commands).join(' ') + ' exit\n');
 		}
 	},
@@ -262,13 +262,17 @@ const fs = require('fs'),
 	}, function (socket) {
 		let rl = readline.createInterface({
 				input: socket,
-				output: socket
+				output: socket,
+				removeHistoryDuplicates: true
 			}),
 			tmo = setTimeout(function () {
-				socket.end('time out\n');
+				if (!socket.destroyed) {
+					socket.end('time out\n');
+				}
 			}, 60 * 1000),
 			waitForCommand = function () {
-				rl.question('please enter a command:\n> ', function (answer) {
+				socket.write('please enter a command:\n');
+				rl.once('line', function (answer) {
 					answer = answer.replace(/^\s+|\s+$/g, '');
 					if (answer) {
 						let c = answer.split(/\s/);
@@ -291,25 +295,27 @@ const fs = require('fs'),
 					} else {
 						waitForCommand();
 					}
-				});
+				}).prompt();
 			};
-		rl.question('please enter management password:\n> ', function (answer) {
+		socket.write('please enter management password:\n');
+		rl.once('line', function (answer) {
 			if (answer === config.manager.password) {
 				clearTimeout(tmo);
 				waitForCommand();
 			} else {
 				socket.end('wrong password\n');
 			}
-		});
+		}).prompt();
 	}).on('listening', function () {
 		console.log('manager started.');
 	}).on('error', function (err) {
 		console.error(err.stack);
 	}).on('close', startManager);
-require('./jsex.js');
 let config = eval(fs.readFileSync(cfg, {
 	encoding: 'utf8'
 }));
+process.title = 'fusion manager';
+require('./jsex.js');
 process.on('uncaughtException', function (err) {
 	console.error(err.stack);
 	process.exit();

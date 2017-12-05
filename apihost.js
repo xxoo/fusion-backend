@@ -194,6 +194,7 @@ const fs = require('fs'),
 			callback(op);
 		}
 	};
+process.title = 'fusion apihost - ' + site;
 require('./jsex.js');
 if (process.stdin.isTTY) {
 	let auth,
@@ -208,8 +209,9 @@ if (process.stdin.isTTY) {
 			prompt();
 		},
 		prompt = function () {
-			rl.question(auth ? 'please enter op data:\n> ' : 'please enter auth data or cid:\n> ', function (answer) {
-				if (auth) {
+			if (auth) {
+				console.log('please enter op data:');
+				rl.once('line', function (answer) {
 					let op = answer.parseJsex();
 					if (op) {
 						makeCall(auth, op.value, callback);
@@ -217,7 +219,10 @@ if (process.stdin.isTTY) {
 						console.log('bad op data.');
 						prompt();
 					}
-				} else {
+				}).prompt();
+			} else {
+				console.log('please enter auth data or cid:');
+				rl.once('line', function (answer) {
 					auth = answer.parseJsex();
 					if (auth && dataType(auth.value) === 'object') {
 						auth = auth.value;
@@ -232,8 +237,8 @@ if (process.stdin.isTTY) {
 						console.log('auth data constructed from cid.');
 					}
 					prompt();
-				}
-			});
+				}).prompt();
+			}
 		};
 	console.log(`apihost started in testing mode for ${site}`);
 	prompt();

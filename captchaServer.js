@@ -41,14 +41,13 @@ const fs = require('fs'),
 					msg = msg.parseJsex();
 					if (msg && dataType(msg.value) === 'object') {
 						let len = msg.value.len || 4,
-							t = tps[msg.value.type] || tps.mormal,
-							s = '',
-							i, path;
-						for (i = 0; i < len; i++) {
+							t = tps[msg.value.type] || tps.normal,
+							s = '';
+						for (let i = 0; i < len; i++) {
 							s += f[Math.round(Math.random() * t)];
 						}
-						path = font.getPath(s);
-						path.commands.forEach(function (cmd) {
+						t = font.getPath(s);
+						t.commands.forEach(function (cmd) {
 							props.forEach(function (v) {
 								if (typeof cmd[v] === 'number') {
 									cmd[v] += (Math.random() * 0.3) - 0.15;
@@ -56,7 +55,7 @@ const fs = require('fs'),
 							});
 						});
 						msg = {
-							path: path.toPathData(),
+							path: t.toPathData(),
 							text: s
 						};
 					} else {
@@ -72,5 +71,6 @@ const fs = require('fs'),
 	}).on('error', function (err) {
 		console.error(err.stack);
 	}).on('end', startServer);
+process.title = 'fusion captcha server';
 require('./jsex.js');
 startServer();

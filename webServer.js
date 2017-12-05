@@ -441,6 +441,7 @@ const fs = require('fs'),
 		console.log('server is started');
 	}).on('closed', startServer);
 let apiid = 0;
+process.title = 'fusion web server';
 require('./jsex.js');
 new ws.Server({
 	perMessageDeflate: true,
