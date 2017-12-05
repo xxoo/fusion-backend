@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1, minimum-scale=1, maximum-scale=1, user-scalable=no"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="black">  
+<meta content="telephone=no,email=no" name="format-detection">
+<meta name="full-screen" content="true"/>
+<meta name="screen-orientation" content="portrait"/>
+<meta name="x5-fullscreen" content="true"/>
+<meta name="360-fullscreen" content="true"/>
+<title>别踩白块儿</title>
+<link href="css/game_base.css" rel="stylesheet" />
+<script src="js/jquery-2.1.0.min.js"></script>
+<script>
+	var GID = "piano";
+	var SCORE_LIMIT = 80;
+</script>
+<script src="js/game_base.js"></script>
+<script src="js/createjs-2013.12.12.min.js"></script>
+<script src="js/createjs_game.js"></script>
+<script src="js/jquery.cookie.js"></script>
+<script src="js/main.js"></script>
+<script>
+gjQipa.onGameStarted = function() {
+	if (IS_REFFER) {
+		$(".follow").animate({left:"-500px", opacity:0}, 500);
+	}
+}
+gjQipa.onGameOver = function() {
+	if (IS_REFFER) {
+		$(".follow").animate({left:"0px", opacity:1}, 500);
+	}
+}
+
+if (IS_REFFER) {
+	document.write("<div class='follow'><a href='" + FOLLOW_URL + "'><img src='img/follow.gif'></a></div>");
+}
+</script>
+</head>
+<body>
+	<canvas id="stage">您的浏览器不支持html5, 请换用支持html5的浏览器</canvas>
+	<!--<iframe id="lbFrame"></iframe>
+	<span class="closeIframe">X</span>-->
+</body>
+</html>
