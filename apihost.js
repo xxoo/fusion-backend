@@ -196,18 +196,19 @@ const fs = require('fs'),
 	};
 require('./jsex.js');
 if (process.stdin.isTTY) {
-	let rl = require('readline').createInterface({
+	let auth,
+		rl = require('readline').createInterface({
 			input: process.stdin,
 			output: process.stdout,
 			removeHistoryDuplicates: true
 		}),
 		callback = function (result) {
-			console.log('sid: ' + auth.sid + '\nop result: ' + toJsex(result));
+			console.log('cid: ' + auth.cid + '\nop result: ' + toJsex(result));
 			auth = undefined;
 			prompt();
 		},
 		prompt = function () {
-			rl.question(auth ? 'please enter op data:\n> ' : 'please enter auth data or sid:\n> ', function (answer) {
+			rl.question(auth ? 'please enter op data:\n> ' : 'please enter auth data or cid:\n> ', function (answer) {
 				if (auth) {
 					let op = answer.parseJsex();
 					if (op) {
@@ -223,17 +224,17 @@ if (process.stdin.isTTY) {
 						console.log('auth data received.');
 					} else {
 						auth = {
+							host: site,
 							ip: '::1',
-							agent: 'api testing mode',
-							sid: answer
+							agent: 'console',
+							cid: answer
 						};
-						console.log('auth data constructed from sid.');
+						console.log('auth data constructed from cid.');
 					}
 					prompt();
 				}
 			});
-		},
-		auth;
+		};
 	console.log(`apihost started in testing mode for ${site}`);
 	prompt();
 } else {
@@ -244,7 +245,7 @@ if (process.stdin.isTTY) {
 			if (typeof config.site[site].api.serv === 'string') {
 				net.createConnection(config.site[site].api.serv, function () {
 					this.end();
-					console.log(`server is already running. this instance will quit.`);
+					console.log('server is already running. this instance will quit.');
 					process.exit();
 				}).on('error', function () {
 					if (typeof config.site[site].api.serv === 'string') {
@@ -263,7 +264,9 @@ if (process.stdin.isTTY) {
 			let last = [''],
 				callapi = function (i, auth, op) {
 					makeCall(auth, op, function (result) {
-						socket.write(i + '\n' + toJsex(auth.sid) + '\n' + toJsex(result) + '\n');
+						if (!socket.destroyed) {
+							socket.write(i + '\n' + toJsex(auth.cid) + '\n' + toJsex(result) + '\n');
+						}
 					});
 				};
 			socket.on('data', function (data) {
@@ -293,7 +296,7 @@ if (process.stdin.isTTY) {
 				}
 			}).setEncoding('utf8');
 		}).on('listening', function () {
-			console.log(`server is started`);
+			console.log('server is started');
 		}).on('error', function (err) {
 			console.error(err.stack);
 		}).on('close', startServer);

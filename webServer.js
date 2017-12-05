@@ -283,15 +283,15 @@ const fs = require('fs'),
 				if (apis[site]) {
 					let cl = req.headers['content-length'] | 0,
 						auth = {
-							sid: req.headers.sid || '',
+							cid: req.headers.cid || '',
 							host: host,
 							agent: req.headers['user-agent'],
 							address: req.socket.address().address
 						},
-						sendResult = function (sid, result) {
+						sendResult = function (cid, result) {
 							if (!res.finished) {
 								let v = chkEnc(req.headers['accept-encoding']);
-								hd.sid = auth.sid = sid;
+								hd.cid = auth.cid = cid;
 								hd['content-type'] = 'text/jsex';
 								result = new Buffer(toJsex(result));
 								if (result.length > (cfg.zLen || config.site.defaultHost.zLen) && v) {
@@ -353,7 +353,7 @@ const fs = require('fs'),
 												if (err) {
 													rename();
 												} else {
-													sendResult(auth.sid, '/' + dir + '/' + n);
+													sendResult(auth.cid, '/' + dir + '/' + n);
 												}
 											});
 										};
@@ -362,7 +362,7 @@ const fs = require('fs'),
 									}, function (err) {
 										del();
 										err.message = err.stack;
-										sendResult(auth.sid, err);
+										sendResult(auth.cid, err);
 									});
 								};
 							while (!c || uploading[c]) {
@@ -396,14 +396,14 @@ const fs = require('fs'),
 								'!api': 'upload',
 								path: p,
 								len: cl
-							}, function (sid, result) {
+							}, function (cid, result) {
 								if (result) {
 									if (uploading[c]) {
 										req.destroy();
 									}
-									sendResult(sid, result);
+									sendResult(cid, result);
 								} else {
-									auth.sid = sid;
+									auth.cid = cid;
 									if (uploading[c]) {
 										apidone = true;
 									} else {
@@ -457,7 +457,7 @@ new ws.Server({
 		site = getSite(host),
 		auth = {
 			host: host,
-			sid: req.url.substr(1),
+			cid: req.url.substr(1),
 			agent: req.headers['user-agent'],
 			address: req.socket.address().address
 		};
@@ -470,10 +470,10 @@ new ws.Server({
 			if (typeof id === 'number') {
 				v = msg.substr(t).parseJsex();
 				if (v) {
-					callapi(site, auth, v.value, function (sid, result) {
+					callapi(site, auth, v.value, function (cid, result) {
 						if (client.readyState === ws.OPEN) {
-							auth.sid = sid;
-							client.send(id + '\n' + toJsex(sid) + '\n' + toJsex(result));
+							auth.cid = cid;
+							client.send(id + '\n' + toJsex(cid) + '\n' + toJsex(result));
 						}
 					});
 				}
