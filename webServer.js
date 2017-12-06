@@ -147,7 +147,11 @@ const fs = require('fs'),
 			site = getSite(host),
 			cfg = config.site[site],
 			hd = {},
-			p = req.url.replace(/\?.*$/, '');
+			p = req.url.replace(/\?.*$/, '').replace(/\\/g, '/');
+		if (p[0] !== '/') {
+			p = '/' + p;
+		}
+		p = path.posix.normalize(p);
 		if (!req.headers.origin || chkOH(cfg.origin, originHost(req.headers.origin), host)) {
 			if (req.headers.origin) {
 				hd['access-control-allow-origin'] = req.headers.origin;
