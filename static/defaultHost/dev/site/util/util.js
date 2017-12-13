@@ -35,11 +35,11 @@ define(['common/kernel/kernel'], function (kernel) {
 				});
 			},
 			upload: function (path, file, silent) {
-				return new Promise(function(resolve, reject){
+				return new Promise(function (resolve, reject) {
 					var x = new XMLHttpRequest;
 					x.open('post', path + file.name, true);
 					x.setRequestHeader('cid', localStorage.getItem('cid') || '');
-					x.onreadystatechange = function(){
+					x.onreadystatechange = function () {
 						if (x.readyState === 4) {
 							if (x.status === 200) {
 								let cid = x.getResponseHeader('cid');
