@@ -2,10 +2,34 @@
 <html>
 <head>
 <meta charset="UTF-8">
+<meta name="viewport" content="user-scalable=no, width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1"/>
 <title>adsf</title>
+<style>
+	html{
+		position: absolute;
+		top:0;
+		left:0;
+		right:0;
+		bottom:0;
+		overflow: hidden;
+	}
+	body{
+		position: absolute;
+		border: 1px solid blue;
+		top:0;
+		left:0;
+		right:0;
+		bottom:0;
+		margin:0;
+		overflow: auto;
+		-webkit-overflow-scrolling: touch;
+		background-color: yellow;
+	}
+</style>
 </head>
 <body>
-	<input type="file" multiple/>
+	<input type="file" style="margin-top: 1000px;" multiple/>
+	<svg xmlns="http://www.w3.org/2000/svg"></svg>
 	<script>
 		var t = document.querySelector('input');
 		t.onchange = function() {
@@ -23,6 +47,10 @@
 				len: 4
 			}));
 		});
+		document.body.addEventListener('souchstart', function(evt){
+			evt.stopPropagation();
+		});
 	</script>
+	<script src="1.js" type="module"></script>
 </body>
 </html>

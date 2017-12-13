@@ -1,0 +1,11 @@
+.flexbox(@vertical) {
+	.vertical(@vertical) when(@vertical=1) {
+		flex-direction: column;
+	}
+	display: flex;
+	.vertical(@vertical)
+}
+
+.flexcontent(@flexable) {
+	flex: @flexable @flexable auto;
+}

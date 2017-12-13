@@ -283,7 +283,7 @@ if (process.stdin.isTTY) {
 						last[j] = last[j].parseJsex();
 						if (last[j]) {
 							let t = dataType(last[j].value);
-							if ((j && t === 'object') || t === 'number') {
+							if ((j === 2 && t === 'object' || t === 'array') || (j === 1 && t === 'object') || (!j && t === 'number')) {
 								last[j] = last[j].value;
 								if (j === 2) {
 									callapi(last[0], last[1], last[2]);

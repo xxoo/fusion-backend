@@ -1,0 +1,567 @@
+@import "../../config.less";
+@import "../../vars.less";
+* {
+	box-sizing: border-box;
+	overflow: hidden;
+	-webkit-tap-highlight-color: transparent;
+	-webkit-touch-callout: none;
+	font-size: inherit;
+	-webkit-text-size-adjust: none;
+	-moz-text-size-adjust: none;
+	-ms-text-size-adjust: none;
+	line-height: inherit;
+	outline: none;
+	z-index: 0;
+	color: inherit;
+	text-decoration: inherit;
+	font-family: inherit;
+	visibility: inherit;
+}
+
+html {
+	position: absolute;
+	top: 0;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	-ms-user-select: none;
+	-moz-user-select: none;
+	user-select: none;
+	font-family: var(--defaultFont);
+	font-size: 16px;
+	line-height: 1;
+}
+
+body {
+	margin: 0;
+	width: 100%;
+	height: 100%;
+	&.clean{
+		>#page {
+			>.header,
+			>.navMenu {
+				display: none;
+			}
+		}
+		>#hint{
+			bottom: 20px;
+		}
+	}
+	&.mask {
+		>#page,
+		>#readable,
+		>#popup {
+			filter: blur(4px);
+		}
+	}
+}
+
+#page>.header>.back,
+#page>.header>.leftMenuBtn,
+#page>.header>.rightMenuBtn,
+#popup>.header>.back,
+#popup>.header>.close {
+	position: absolute;
+	top: 0;
+	bottom: 0;
+	height: 16px;
+	font-size: 16px;
+	line-height: 1;
+	margin: auto 0;
+	color: var(--headerText);
+	overflow: visible;
+	>svg {
+		vertical-align: top;
+		height: 100%;
+		fill: var(--headerText);
+	}
+}
+
+#page,
+#popup {
+	.flexbox(1);
+	height: 100%;
+	background-color: var(--appBackground);
+	>.header {
+		.flexcontent(0);
+		position: relative;
+		color: var(--headerText);
+		background-color: var(--headerBackground);
+		margin-bottom: var(--headerMargin);
+		box-shadow: var(--headerShadow);
+		>.back {
+			left: 0;
+		}
+		>.title {
+			font-weight: bold;
+			font-size: 16px;
+			height: var(--headerHeight);
+			line-height: var(--headerHeight);
+			text-align: center;
+			white-space: nowrap;
+		}
+	}
+	>.content {
+		.flexcontent(1);
+		position: relative;
+		width: 100%;
+		>div {
+			position: absolute;
+			width: 100%;
+			height: 100%;
+			right: 100%;
+			visibility: hidden;
+			color: var(--appText);
+			animation-duration: 400ms;
+			animation-timing-function: ease-in-out;
+			animation-iteration-count: 1;
+		}
+	}
+}
+
+#page {
+	position: relative;
+	width: 100%;
+	>.header {
+		>.leftMenuBtn {
+			left: 10px;
+		}
+		>.rightMenuBtn {
+			right: 10px;
+		}
+	}
+	>.navMenu {
+		.flexbox(0);
+		.flexcontent(0);
+		height: var(--footerHeight);
+		background-color: var(--footerBackground);
+		position: relative;
+		margin-top: var(--footerMargin);
+		box-shadow: var(--footerShadow);
+		>a {
+			.flexcontent(1);
+			display: block;
+			height: 100%;
+			width: 100%;
+			text-align: center;
+			color: var(--footerFrontground);
+			font-size: 12px;
+			>svg {
+				display: block;
+				height: var(--footerIconSize);
+				margin: 6px auto;
+				fill: var(--footerFrontground);
+			}
+			&.selected {
+				color: var(--footerFrontgroundHighlight);
+				>svg {
+					fill: var(--footerFrontgroundHighlight);
+				}
+			}
+		}
+	}
+}
+
+#popup {
+	position: absolute;
+	left: 0;
+	right: 0;
+	bottom: 100%;
+	visibility: hidden;
+	>.header>.close {
+		right: 10px;
+	}
+}
+
+#dialog,
+#loading,
+#photoView,
+#sliderView {
+	position: absolute;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	top: 0;
+	visibility: hidden;
+	background-color: var(--maskFilterColor);
+}
+
+#dialog>div {
+	right: 10px;
+	left: 10px;
+	bottom: 10px;
+	top: 10px;
+	min-width: 240px;
+	>.btns {
+		text-align: center;
+		margin-bottom: 20px;
+		display: none;
+		>a {
+			display: inline-block;
+			border-radius: 4px;
+			line-height: 24px;
+			min-width: 80px;
+			padding: 0 10px;
+			margin: 0 15px;
+			vertical-align: top;
+			border-width: 1px;
+			border-style: solid;
+			font-size: var(--dialogButtonTextSize);
+			&.yes {
+				color: var(--primaryFrontground);
+				background-color: var(--primaryBackground);
+				border-color: var(--primaryBorder);
+			}
+			&.no {
+				color: var(--defaultFrontground);
+				background-color: var(--defaultBackground);
+				border-color: var(--defaultBorder);
+			}
+		}
+	}
+	>.close {
+		position: absolute;
+		right: 4px;
+		top: 4px;
+		width: 16px;
+		height: 16px;
+		margin: auto;
+		>svg {
+			fill: var(--headerText);
+		}
+	}
+	&.alert,
+	&.confirm {
+		>.content {
+			font-size: var(--dialogTextSize);
+			margin: 20px 20px 20px 20px;
+			line-height: 1.5;
+			white-space: pre-wrap;
+			text-align: justify;
+		}
+	}
+	&.confirm {
+		>.content {
+			margin: 16px 20px;
+		}
+		>.btns {
+			display: block;
+		}
+		>.close {
+			display: none;
+		}
+	}
+}
+
+#dialog>div,
+#loading>div {
+	position: absolute;
+	margin: auto;
+	border-radius: 8px;
+	background-color: var(--dialogBackground);
+	box-shadow: 0 0 5px var(--dialogShadow);
+	color: var(--appText);
+}
+
+#loading>div {
+	right: 0;
+	left: 0;
+	bottom: 0;
+	top: 0;
+	width: 200px;
+	height: 90px;
+	text-align: center;
+	font-size: 16px;
+	line-height: 1;
+	white-space: pre-wrap;
+	>.ico {
+		margin: 15px auto;
+		border: 4px solid var(--loadingColor);
+		border-right-color: var(--loadingAltColor);
+		border-radius: 100%;
+		width: 32px;
+		height: 32px;
+		animation: loadingAni 800ms infinite linear;
+	}
+}
+
+@keyframes loadingAni {
+	from {
+		transform: rotate(0deg);
+	}
+	to {
+		transform: rotate(360deg);
+	}
+}
+
+#popup.in,
+#readable.in {
+	bottom: 0;
+	visibility: inherit;
+	animation: popupin 400ms 1 ease-in-out;
+}
+
+#popup.out,
+#readable.out {
+	visibility: inherit;
+	animation: popupout 400ms 1 ease-in-out;
+}
+
+@keyframes popupin {
+	from {
+		bottom: -100%;
+	}
+	to {
+		bottom: 0;
+	}
+}
+
+@keyframes popupout {
+	from {
+		bottom: 0;
+	}
+	to {
+		bottom: -100%;
+	}
+}
+
+@keyframes panelTransL1 {
+	from {
+		right: 0;
+	}
+	to {
+		right: 100%;
+	}
+}
+
+@keyframes panelTransR1 {
+	from {
+		right: 0;
+	}
+	to {
+		right: -100%;
+	}
+}
+
+@keyframes panelTransL2 {
+	from {
+		right: -100%;
+	}
+	to {
+		right: 0;
+	}
+}
+
+@keyframes panelTransR2 {
+	from {
+		right: 100%;
+	}
+	to {
+		right: 0;
+	}
+}
+
+#sliderView {
+	>.content {
+		position: absolute;
+		top: 0;
+		left: 0;
+		bottom: 0;
+		right: 0;
+	}
+	>.nav {
+		position: absolute;
+		left: 0;
+		right: 0;
+		bottom: 10px;
+		text-align: center;
+		pointer-events: none;
+		color: var(--photoNavColor);
+		font-family: Serif;
+		font-size: 18px;
+		text-shadow: 0 0 1px var(--photoNavShadow);
+	}
+	&.photos>.content>div>div {
+		background-position: 50% 50%;
+		background-size: contain;
+		background-repeat: no-repeat;
+	}
+}
+
+#photoView {
+	>img {
+		position: absolute;
+	}
+	>.actions {
+		position: absolute;
+		bottom: 10px;
+		left: 0;
+		right: 0;
+		text-align: center;
+		overflow: visible;
+		>a {
+			display: inline-block;
+			vertical-align: top;
+			background-color: var(--photoViewBtnBackground);
+			color: var(--photoViewBtnText);
+			margin: 0 4px;
+			font-size: 14px;
+			padding: 8px 16px;
+			border-radius: 4px;
+			box-shadow: 0 0 2px var(--photoViewBtnShadow);
+		}
+	}
+}
+
+#photoView,
+#readable,
+#sliderView {
+	>.close {
+		position: absolute;
+		right: 4px;
+		top: 4px;
+		width: 32px;
+		height: 32px;
+		border-radius: 16px;
+		display: block;
+		background-color: var(--roundCloseBackground);
+		box-shadow: 0 0 4px var(--roundCloseShadow) inset;
+		>svg {
+			position: absolute;
+			left: 0;
+			top: 0;
+			bottom: 0;
+			right: 0;
+			width: 16px;
+			height: 16px;
+			margin: auto;
+			fill: var(--roundCloseFrontground);
+		}
+	}
+}
+
+#readable {
+	position: absolute;
+	left: 0;
+	right: 0;
+	bottom: 100%;
+	height: 100%;
+	visibility: hidden;
+	overflow-y: auto;
+	background-color: var(--readableBackground);
+	>.content {
+		position: absolute;
+		top: 0;
+		left: 0;
+		right: 0;
+		bottom: 0;
+		overflow-y: auto;
+	}
+	&.foreign>.content {
+		.flexbox(0);
+		>iframe {
+			.flexcontent(1);
+			display: block;
+		}
+		&.iosScrollFix>iframe {
+			margin-bottom: -2px;
+		}
+	}
+}
+
+#hint {
+	position: absolute;
+	bottom: 70px;
+	left: 20px;
+	right: 20px;
+	pointer-events: none;
+	text-align: center;
+	opacity: 0;
+	font-size: 14px;
+	overflow: visible;
+	transition: opacity 400ms ease-in-out;
+	>.text {
+		display: inline-block;
+		vertical-align: top;
+		max-width: 100%;
+		color: var(--hintText);
+		line-height: 20px;
+		padding: 5px 12px;
+		background-color: var(--hintBackground);
+		border-radius: 10px;
+		line-height: 20px;
+		padding: 5px 12px;
+		box-shadow: 0 0 3px var(--hintShadow);
+		white-space: pre-wrap;
+		vertical-align: top;
+	}
+}
+
+#helper {
+	position: absolute;
+	top: 0;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	display: none;
+	>div {
+		.flexbox(1);
+		width: 100%;
+		height: 100%;
+		>div {
+			.flexbox(0);
+			>div {
+				height: 100%;
+			}
+			>div:first-child,
+			>div:last-child,
+			&:first-child,
+			&:last-child {
+				background-color: var(--helperBackground);
+			}
+		}
+	}
+	>img {
+		position: absolute;
+	}
+}
+
+.iosScrollFix {
+	padding-top: 1px;
+	padding-bottom: 1px;
+}
+
+.iosScrollFix:before {
+	content: "";
+	display: block;
+	position: absolute;
+	bottom: -2px;
+	right: 0;
+	height: 1px;
+	width: 1px;
+	visibility: hidden;
+	pointer-events: none;
+}
+
+div.reloadHint {
+	position: absolute;
+	left: 0;
+	right: 0;
+	margin: 0 auto;
+	width: 40px;
+	height: 40px;
+	opacity: 0;
+	background-color: var(--reloadHintBackground);
+	padding: 8px;
+	box-shadow: 0 0 4px var(--reloadHintShadow);
+	border-radius: 20px;
+	>svg {
+		display: block;
+		height: 100%;
+		fill: var(--reloadHintStartColor);
+		transition: fill 200ms ease-in-out;
+	}
+	&.pin>svg {
+		fill: var(--reloadHintFinishColor);
+	}
+}

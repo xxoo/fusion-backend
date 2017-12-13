@@ -49,8 +49,8 @@ const fs = require('fs'),
 						t = font.getPath(s);
 						t.commands.forEach(function (cmd) {
 							props.forEach(function (v) {
-								if (typeof cmd[v] === 'number') {
-									cmd[v] += (Math.random() * 0.3) - 0.15;
+								if (cmd.hasOwnProperty(v)) {
+									cmd[v] += Math.random() * 4 - 2;
 								}
 							});
 						});

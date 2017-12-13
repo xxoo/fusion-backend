@@ -1,47 +1,84 @@
-<!DOCTYPE html>
-<html>
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1, minimum-scale=1, maximum-scale=1, user-scalable=no"/>
-<meta name="apple-mobile-web-app-capable" content="yes"/>
-<meta name="apple-mobile-web-app-status-bar-style" content="black">  
-<meta content="telephone=no,email=no" name="format-detection">
-<meta name="full-screen" content="true"/>
-<meta name="screen-orientation" content="portrait"/>
-<meta name="x5-fullscreen" content="true"/>
-<meta name="360-fullscreen" content="true"/>
-<title>别踩白块儿</title>
-<link href="css/game_base.css" rel="stylesheet" />
-<script src="js/jquery-2.1.0.min.js"></script>
-<script>
-	var GID = "piano";
-	var SCORE_LIMIT = 80;
-</script>
-<script src="js/game_base.js"></script>
-<script src="js/createjs-2013.12.12.min.js"></script>
-<script src="js/createjs_game.js"></script>
-<script src="js/jquery.cookie.js"></script>
-<script src="js/main.js"></script>
-<script>
-gjQipa.onGameStarted = function() {
-	if (IS_REFFER) {
-		$(".follow").animate({left:"-500px", opacity:0}, 500);
-	}
-}
-gjQipa.onGameOver = function() {
-	if (IS_REFFER) {
-		$(".follow").animate({left:"0px", opacity:1}, 500);
-	}
-}
-
-if (IS_REFFER) {
-	document.write("<div class='follow'><a href='" + FOLLOW_URL + "'><img src='img/follow.gif'></a></div>");
-}
-</script>
-</head>
-<body>
-	<canvas id="stage">您的浏览器不支持html5, 请换用支持html5的浏览器</canvas>
-	<!--<iframe id="lbFrame"></iframe>
-	<span class="closeIframe">X</span>-->
-</body>
+<!DOCTYPE HTML>
+<html class="loading">
+	<head>
+		<meta http-equiv="x-ua-compatible" content="IE=edge"/>
+		<meta charset="utf-8"/>
+		<meta name="apple-mobile-web-app-status-bar-style" content="default"/>
+		<meta name="apple-mobile-web-app-capable" content="yes"/>
+		<meta name="mobile-web-app-capable" content="yes"/>
+		<meta name="msapplication-tap-highlight" content="no"/>
+		<title>fusion mobile</title>
+		<style>
+			html.loading{
+				position: absolute;
+				top: 0;
+				left: 0;
+				right: 0;
+				bottom: 0;
+				background-image: url(/loading.svg);
+				background-size: 50% auto;
+				background-repeat: no-repeat;
+				background-position: 50% 50%;
+			}
+			html.loading>body{
+				opacity: 0;
+			}
+		</style>
+		<script src="/framework/all.js"></script>
+	</head>
+	<body style="transition: opacity 200ms ease-in-out;">
+		<!--页面框架-->
+		<div id="page">
+			<div class="header">
+				<div class="title">_</div>
+				<a class="back">_</a>
+				<a class="leftMenuBtn"></a>
+				<a class="rightMenuBtn"></a>
+			</div>
+		  <div class="content"></div>
+			<div class="navMenu"></div>
+		</div>
+		<!--弹出窗口框架-->
+		<div id="popup">
+			<div class="header">
+				<div class="title">_</div>
+				<a class="back" href="javascript:;">_</a>
+				<a class="close" href="javascript:;"></a>
+			</div>
+			<!-- 弹窗区域 -->
+			<div class="content"></div>
+		</div>
+		<!--帮助指引-->
+		<a id="helper" href="javascript:;"><div><div></div><div><div></div><div></div><div></div></div><div></div></div><img/></a>
+		<!--用于展示自定义的静态或非本地内容-->
+		<div id="readable">
+			<div class="content"></div>
+			<a class="close" href="javascript:;"></a>
+		</div>
+		<!--用于展示图片-->
+		<div id="sliderView">
+			<div class="content"></div>
+			<div class="nav">_</div>
+			<a class="close" href="javascript:;"></a>
+		</div>
+		<div id="photoView">
+			<img/>
+			<a class="close" href="javascript:;"></a>
+			<div class="actions"></div>
+		</div>
+		<!--对话框-->
+		<div id="dialog">
+			<div>
+				<div class="content"></div>
+				<div class="btns"><a class="yes" href="javascript:;">_</a><a class="no" href="javascript:;">_</a></div>
+				<a class="close" href="javascript:;"></a>
+			</div>
+		</div>
+		<!--用于展示等待提示-->
+		<div id="loading">
+			<div><div class="ico"></div>_</div>
+		</div>
+		<!--底部提示-->
+		<div id="hint"><div class="text">_</div></div>
+	</body>
 </html>

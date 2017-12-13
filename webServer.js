@@ -328,7 +328,7 @@ const fs = require('fs'),
 									req.destroy();
 								}
 								i += data.length;
-							}).on('close', function () {
+							}).on('end', function () {
 								let v;
 								if (i === cl) {
 									v = bf.toString('utf8', 0, i).parseJsex();
@@ -478,7 +478,7 @@ new ws.Server({
 					callapi(site, auth, v.value, function (cid, result) {
 						if (client.readyState === ws.OPEN) {
 							auth.cid = cid;
-							client.send(id + '\n' + toJsex(cid) + '\n' + toJsex(result));
+							client.send(id + '\n' + cid + '\n' + toJsex(result));
 						}
 					});
 				}

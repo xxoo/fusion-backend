@@ -13,7 +13,8 @@
 					fileLen: 2 * 1024 * 1024,
 					zLen: 4 * 1024,
 					api: {
-						serv: prefix + 'api.defaultHost'
+						serv: prefix + 'api.defaultHost',
+						deps: ['captcha']
 					}
 				},
 				localhost: {
