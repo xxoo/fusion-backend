@@ -148,7 +148,7 @@ define(['common/kernel/kernel'], function (kernel) {
 	}
 
 	function makews() {
-		let w = new WebSocket(location.origin.replace(/^https/, 'wss') + '/' + (localStorage.getItem('cid') || ''));
+		let w = new WebSocket(location.origin.replace(/^http/, 'ws') + '/' + (localStorage.getItem('cid') || ''));
 		w.addEventListener('open', function () {
 			ws = w;
 			if (cbs) {
