@@ -12,6 +12,7 @@
 					postLen: 64 * 1024,
 					fileLen: 2 * 1024 * 1024,
 					zLen: 4 * 1024,
+					securePath: /^\//,
 					api: {
 						serv: prefix + 'api.defaultHost',
 						deps: ['captcha']

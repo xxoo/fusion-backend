@@ -38,14 +38,9 @@ define(['common/kernel/kernel'], function (kernel) {
 				return new Promise(function (resolve, reject) {
 					var x = new XMLHttpRequest;
 					x.open('post', path + file.name, true);
-					x.setRequestHeader('cid', localStorage.getItem('cid') || '');
 					x.onreadystatechange = function () {
 						if (x.readyState === 4) {
 							if (x.status === 200) {
-								let cid = x.getResponseHeader('cid');
-								if (cid) {
-									localStorage.setItem('cid', cid);
-								}
 								let data = x.responseText.parseJsex();
 								if (data) {
 									if (dataType(data) === 'error') {
@@ -118,15 +113,10 @@ define(['common/kernel/kernel'], function (kernel) {
 		let toback = cbs.toback,
 			x = new XMLHttpRequest();
 		x.open('post', '/', true);
-		x.setRequestHeader('cid', localStorage.getItem('cid') || '');
 		x.onreadystatechange = function () {
 			if (x.readyState === 4) {
 				let data;
 				if (x.status === 200) {
-					let cid = x.getResponseHeader('cid');
-					if (cid) {
-						localStorage.setItem('cid', cid);
-					}
 					data = x.responseText.parseJsex();
 					if (data && dataType(data.value) === 'array') {
 						for (let i = 0; i < toback.length; i++) {
@@ -148,24 +138,24 @@ define(['common/kernel/kernel'], function (kernel) {
 	}
 
 	function makews() {
-		let w = new WebSocket(location.origin.replace(/^http/, 'ws') + '/' + (localStorage.getItem('cid') || ''));
+		let w = new WebSocket(location.origin.replace(/^http/, 'ws') + '/');
 		w.addEventListener('open', function () {
 			ws = w;
 			if (cbs) {
 				let c = cbs;
-				cbs = [];
+				cbs = {};
 				for (let i = 0; i < c.length; i++) {
 					wsCall(c[i].tocall, c[i].toback);
 				}
 			} else {
-				cbs = [];
+				cbs = {};
 			}
 		});
 		w.addEventListener('message', function (evt) {
 			let msg = evt.data.split('\n');
 			if (msg.length === 3 && cbs.hasOwnProperty(msg[0])) {
 				if (msg[1]) {
-					localStorage.setItem('cid', msg[1]);
+					document.cookie = 'cid=' + encodeURIComponent(msg[1]) + ';path=/;expires=Fri, 31-Dec-9999 23:59:59 GMT';
 				}
 				msg[2] = msg[2].parseJsex();
 				if (msg[2]) {

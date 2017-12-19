@@ -7,5 +7,8 @@ module.exports = {
 	},
 	upload: async function (params, auth) {
 		return Promise.resolve();
+	},
+	securePath: async function (params, auth) {
+		return Promise.resolve();
 	}
 };

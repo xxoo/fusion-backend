@@ -194,7 +194,6 @@ const fs = require('fs'),
 			callback(op);
 		}
 	};
-process.title = 'fusion apihost - ' + site;
 require('./jsex.js');
 if (process.stdin.isTTY) {
 	let auth,
@@ -311,7 +310,7 @@ if (process.stdin.isTTY) {
 				setConfig[n](msg[n]);
 			}
 		}
-	});
+	}).title = 'fusion apihost - ' + site;
 	startServer();
 }
 global.clients = {};
