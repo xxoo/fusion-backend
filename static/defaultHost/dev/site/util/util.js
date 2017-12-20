@@ -73,8 +73,7 @@ define(['common/kernel/kernel'], function (kernel) {
 			}
 		};
 	let ws, calltmo, cbs,
-		i = 0,
-		tocall = [];
+		wsId = 0;
 	if (window.WebSocket) {
 		makews();
 	} else {
@@ -88,8 +87,8 @@ define(['common/kernel/kernel'], function (kernel) {
 
 	function wsCall(o, cb) {
 		if (ws) {
-			cbs[i] = cb;
-			ws.send(i++ + '\n' + toJsex(o));
+			cbs[wsId] = cb;
+			ws.send(wsId++ + '\n' + toJsex(o));
 		} else {
 			if (!cbs) {
 				cbs = [];
@@ -158,10 +157,8 @@ define(['common/kernel/kernel'], function (kernel) {
 					document.cookie = 'cid=' + encodeURIComponent(msg[1]) + ';path=/;expires=Fri, 31-Dec-9999 23:59:59 GMT';
 				}
 				msg[2] = msg[2].parseJsex();
-				if (msg[2]) {
-					cbs[msg[0]](msg[2].value);
-					delete cbs[msg[0]];
-				}
+				cbs[msg[0]](msg[2] ? msg[2].value : undefined);
+				delete cbs[msg[0]];
 			}
 		});
 		w.addEventListener('close', function () {
@@ -169,10 +166,10 @@ define(['common/kernel/kernel'], function (kernel) {
 			let keys = Object.keys(cbs);
 			if (keys.length) {
 				let data = Error('server_error');
-				for (let i = 0; i < keys.length; i++) {
-					cbs[keys[i]](data);
-					delete cbs[keys[i]];
+				for (let n in cbs) {
+					cbs[n](data);
 				}
+				cbs = undefined;
 			}
 			makews();
 		});
