@@ -5,12 +5,14 @@ const fs = require('fs'),
 		encoding: 'utf8'
 	})),
 	setConfig = {},
+	stats = {},
 	site = process.argv[2],
 	net = require('net'),
 	apis = require('./apis/' + site),
 	vreg = /^!value(?:\.|$)/,
 	procOp = function (auth, op, callback) {
-		const api = apis[op['!api']],
+		const apiname = op['!api'],
+			api = apis[apiname],
 			vars = op['!vars'];
 		if (dataType(vars) === 'object') {
 			delete op['!vars'];
@@ -24,7 +26,11 @@ const fs = require('fs'),
 					err.message = err.stack;
 				}
 				callback(err);
+			}).then(function () {
+				stats[apiname].active--;
+				stats[apiname].done++;
 			});
+			stats[apiname].active++;
 		} else {
 			callback(op);
 		}
@@ -195,6 +201,12 @@ const fs = require('fs'),
 		}
 	};
 require('./jsex.js');
+for (let n in apis) {
+	stats[n] = {
+		active: 0,
+		done: 0
+	}
+}
 if (process.stdin.isTTY) {
 	let auth,
 		rl = require('readline').createInterface({
@@ -264,6 +276,9 @@ if (process.stdin.isTTY) {
 				server.listen(config.site[site].api.serv);
 			}
 		},
+		statLog = function(m){
+			return `[${m}] ${stats[m].active} active, ${stats[m].done} done.\n`;
+		},
 		server = net.createServer(function (socket) {
 			let last = [''],
 				callapi = function (i, auth, op) {
@@ -305,10 +320,27 @@ if (process.stdin.isTTY) {
 			console.error(err.stack);
 		}).on('close', startServer);
 	process.on('message', function (msg) {
-		for (let n in msg) {
-			if (setConfig[n]) {
-				setConfig[n](msg[n]);
+		if (msg.type === 'updateConfig') {
+			let m = msg.data.parseJsex().value;
+			for (let n in m) {
+				if (setConfig[n]) {
+					setConfig[n](m[n]);
+				}
 			}
+		} else if (msg.type === 'stats') {
+			let s;
+			if (stats.hasOwnProperty(msg.data)) {
+				s = statLog(msg.data);
+			} else {
+				s = '';
+				for (let m in stats) {
+					s += statLog(m);
+				}
+			}
+			process.send({
+				id: msg.id,
+				data: s
+			});
 		}
 	}).title = 'fusion apihost - ' + site;
 	startServer();

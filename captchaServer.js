@@ -9,6 +9,10 @@ const fs = require('fs'),
 	font = opentype.loadSync(path.join(__dirname, 'captcha.ttf')),
 	f = '1234567890abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ',
 	props = ['x', 'y', 'x1', 'y1'],
+	stats = {
+		clients: 0,
+		requests: 0
+	},
 	tps = {
 		all: f.length - 1,
 		normal: 35,
@@ -62,15 +66,26 @@ const fs = require('fs'),
 						msg = Error('bad request');
 					}
 					socket.write(toJsex(msg) + '\n');
+					stats.requests++;
 					msg = '';
 				}
 			}
+		}).on('close', function () {
+			stats.clients--;
 		}).setEncoding('utf8');
+		stats.clients++;
 	}).on('listening', function () {
 		console.log('server started.');
 	}).on('error', function (err) {
 		console.error(err.stack);
 	}).on('end', startServer);
-process.title = 'fusion captcha server';
 require('./jsex.js');
+process.on('message', function (msg) {
+	if (msg.type === 'stats') {
+		process.send({
+			id: msg.id,
+			data: `${stats.clients} clients, ${stats.requests} requests.`
+		});
+	}
+}).title = 'fusion captcha server';
 startServer();

@@ -15,6 +15,42 @@ const fs = require('fs'),
 	apis = {},
 	compressing = {},
 	uploading = {},
+	stats = {},
+	makeStat = function (n) {
+		stats[n] = {
+			other: {
+				active: 0,
+				done: 0
+			},
+			ws: {
+				active: 0,
+				done: 0
+			},
+			GET: {
+				active: 0,
+				done: 0
+			},
+			POST: {
+				active: 0,
+				done: 0
+			},
+			HEAD: {
+				active: 0,
+				done: 0
+			},
+			OPTIONS: {
+				active: 0,
+				done: 0
+			}
+		};
+	},
+	statLog = function(m) {
+		let s = '[' + m + ']';
+		for (let n in stats[m]) {
+			s += ` ${n}: ${stats[m][n].active} active, ${stats[m][n].done} done;`;
+		}
+		return s + '\n';
+	},
 	chkEnc = function (r) {
 		let s = ['gzip', 'deflate'];
 		if (r) {
@@ -157,11 +193,17 @@ const fs = require('fs'),
 			site = getSite(host),
 			cfg = config.site[site],
 			hd = {},
-			p = req.url.replace(/\?.*$/, '').replace(/\\/g, '/');
+			p = req.url.replace(/\?.*$/, '').replace(/\\/g, '/'),
+			reqtype = stats[site].hasOwnProperty(req.method) ? req.method : 'other';
 		if (p[0] !== '/') {
 			p = '/' + p;
 		}
 		p = path.posix.normalize(p);
+		stats[site][reqtype].active++;
+		res.on('finish', function () {
+			stats[site][reqtype].active--;
+			stats[site][reqtype].done++;
+		});
 		if (!req.headers.origin || chkOH(cfg.origin, originHost(req.headers.origin), host)) {
 			let auth = {
 					cid: getCid(req.headers.cookie),
@@ -177,7 +219,7 @@ const fs = require('fs'),
 			if (req.headers.origin) {
 				hd['access-control-allow-origin'] = req.headers.origin;
 			}
-			if (req.method === 'GET' || req.method === 'HEAD') {
+			if (reqtype === 'GET' || reqtype === 'HEAD') {
 				let procStaticFile = function () {
 					let c = path.normalize(path.resolve(__dirname, 'cache', site, p.substr(1)) + '.gz'),
 						sendFile = function (p, stat, start, end) {
@@ -202,7 +244,7 @@ const fs = require('fs'),
 								} else {
 									res.writeHead(200, hd);
 								}
-								if (req.method === 'GET') {
+								if (reqtype === 'GET') {
 									fs.createReadStream(p, {
 										start: start,
 										end: end
@@ -234,7 +276,7 @@ const fs = require('fs'),
 						compress = function (p, t, c) {
 							if (!res.finished) {
 								res.writeHead(200, hd);
-								if (req.method === 'GET') {
+								if (reqtype === 'GET') {
 									let enc = makeEnc('gzip');
 									fs.createReadStream(p).pipe(enc).pipe(res);
 									if (c && !compressing.hasOwnProperty(c)) {
@@ -321,7 +363,7 @@ const fs = require('fs'),
 				} else {
 					procStaticFile();
 				}
-			} else if (req.method === 'POST') {
+			} else if (reqtype === 'POST') {
 				if (apis[site]) {
 					let cl = req.headers['content-length'] | 0,
 						sendResult = function (cid, result) {
@@ -457,7 +499,7 @@ const fs = require('fs'),
 					res.writeHead(403, hd);
 					res.end();
 				}
-			} else if (req.method === 'OPTIONS') {
+			} else if (reqtype === 'OPTIONS') {
 				hd['access-control-allow-methods'] = 'POST, GET, HEAD, OPTIONS';
 				res.writeHead(200, hd);
 				res.end();
@@ -499,6 +541,7 @@ new ws.Server({
 			agent: req.headers['user-agent'],
 			address: req.socket.address().address
 		};
+	stats[site].ws.active++;
 	client.on('message', function (msg) {
 		let id = msg.parseJsex(),
 			v, t;
@@ -517,26 +560,49 @@ new ws.Server({
 				}
 			}
 		}
+	}).on('close', function () {
+		stats[site].ws.active--;
+		stats[site].ws.done++;
 	});
 });
 process.on('message', function (msg) {
-	let s = config.site;
-	for (let n in msg) {
-		if (apis[n] && !isEqual(s[n].api.serv, msg[n].api.serv)) {
-			apis[n].client.destroy();
+	if (msg.type === 'updateConfig') {
+		let s = config.site,
+			m = msg.data.parseJsex().value;
+		for (let n in m) {
+			if (apis[n] && !isEqual(s[n].api.serv, m[n].api.serv)) {
+				apis[n].client.destroy();
+			}
+			if (!s.hasOwnProperty(n)) {
+				makeStat(n);
+			}
 		}
-	}
-	config.site = msg;
-	console.log('site config updated.');
-	for (let n in s) {
-		if (!s[n].api && msg[n].api) {
-			loadApi(n);
+		config.site = m;
+		console.log('site config updated.');
+		for (let n in s) {
+			if (!s[n].api && m[n].api) {
+				loadApi(n);
+			}
 		}
+	} else if (msg.type === 'stats') {
+		let s;
+		if (stats.hasOwnProperty(msg.data)) {
+			s = statLog(msg.data);
+		} else {
+			s = '';
+			for (let m in stats) {
+				s += statLog(m);
+			}
+		}
+		process.send({
+			id: msg.id,
+			data: s
+		});
 	}
 });
 for (let n in config.site) {
+	makeStat(n);
 	if (config.site[n].api) {
-		console.log(`connecting to api server for ${n}...`);
 		loadApi(n);
 	}
 };

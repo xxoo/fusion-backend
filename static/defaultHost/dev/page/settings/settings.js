@@ -11,16 +11,19 @@ define(['module', 'common/kernel/kernel', 'site/util/util'], function (module, k
 	};
 
 	captcha.addEventListener('click', function () {
-		let d = Date.now();
-		for (let i = 0; i< 100; i++) {
-			util.callapi({
-				'!api': 'getcaptcha',
-				type: 'all',
-				len: 4
-			}).then(function (data) {
-				kernel.setSvgPath(captcha, data.path);
-				console.log(Date.now() - d);
-			});
+		for (let i = 0; i < 100; i++) {
+			! function () {
+				util.callapi({
+					'!api': 'getcaptcha',
+					type: 'all',
+					len: 4
+				}).then(function (data) {
+					kernel.setSvgPath(captcha, data.path);
+					if (i === 99) {
+						//location.reload();
+					}
+				});
+			}(i);
 		}
 	});
 

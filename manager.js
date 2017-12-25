@@ -11,6 +11,8 @@ const fs = require('fs'),
 	},
 	api = {},
 	server = {},
+	apicbs = {},
+	servercbs = {},
 	isLocal = function (srv) {
 		let t = typeof srv;
 		return t === 'string' || t === 'number' || srv.host === '0.0.0.0' || srv.host === '127.0.0.1' || srv.host === 'localhost';
@@ -44,22 +46,42 @@ const fs = require('fs'),
 	startServer = function (n) {
 		if (config.server.hasOwnProperty(n) && isLocal(config.server[n])) {
 			server[n] = child_process.fork(path.join(__dirname, n + 'Server.js'), opt).on('exit', function (code, signal) {
+				for (let m in servercbs[n]) {
+					servercbs[n][m](n + ' server is stoped.\n');
+				}
 				startServer(n);
+			}).on('message', function (msg) {
+				if (servercbs[n] && servercbs[n].hasOwnProperty(msg.id)) {
+					servercbs[n][msg.id](msg.data);
+					delete servercbs[n][msg.id];
+				}
 			});
+			servercbs[n] = {};
 			watch(server[n], n)
 		} else if (server.hasOwnProperty(n)) {
 			delete server[n];
+			delete servercbs[n];
 			console.log(n + ' server is stoped.');
 		};
 	},
 	startApi = function (n) {
 		if (config.site.hasOwnProperty(n) && config.site[n].api && isLocal(config.site[n].api.serv)) {
 			api[n] = child_process.fork(path.join(__dirname, 'apihost.js'), [n], opt).on('exit', function (code, signal) {
+				for (let m in apicbs[n]) {
+					apicbs[n][m]('web server is stoped.\n');
+				}
 				startApi(n);
+			}).on('message', function(msg){
+				if (apicbs[n] && apicbs[n].hasOwnProperty(msg.id)) {
+					apicbs[n][msg.id](msg.data);
+					delete apicbs[n][msg.id];
+				}
 			});
+			apicbs[n] = {};
 			watch(api[n], n);
 		} else if (api.hasOwnProperty(n)) {
 			delete api[n];
+			delete apicbs[n];
 			console.log(n + ' api is stoped.');
 		}
 	},
@@ -79,6 +101,29 @@ const fs = require('fs'),
 		manager.listen(config.manager.port);
 	},
 	commands = {
+		stats: async function(type, id, param) {
+			return new Promise(function(resolve, reject) {
+				let o, c;
+				if (type === 'api') {
+					o = api;
+					c = apicbs;
+				} else {
+					type = 'server'
+					o = server;
+					c = servercbs;
+				}
+				if (o.hasOwnProperty(id)) {
+					o[id].send({
+						id: cbid,
+						type: 'stats',
+						data: param
+					});
+					c[id][cbid++] = resolve;
+				} else {
+					resolve(`${id} ${type} is not running.`);
+				}
+			});
+		},
 		reloadConfig: async function () {
 			return new Promise(function (resolve, reject) {
 				fs.readFile(cfg, {
@@ -101,7 +146,10 @@ const fs = require('fs'),
 					}
 					if (server.web && !config.server.web && s.indexOf('web') < 0) {
 						if (!isEqual(config.site, c.site)) {
-							server.web.send(c.site);
+							server.web.send({
+								type: 'updateConfig',
+								data: toJsex(c.site)
+							});
 						}
 					}
 					for (let n in c.site) {
@@ -115,7 +163,10 @@ const fs = require('fs'),
 									for (let i = 0; i < d.length; i++) {
 										r[d[i]] = c.server[d[i]];
 									}
-									api[n].send(r);
+									api[n].send({
+										type: 'updateConfig',
+										data: toJsex(r)
+									});
 								}
 							}
 						} else {
@@ -311,9 +362,10 @@ const fs = require('fs'),
 	}).on('error', function (err) {
 		console.error(err.stack);
 	}).on('close', startManager);
-let config = eval(fs.readFileSync(cfg, {
-	encoding: 'utf8'
-}));
+let cbid = 0,
+	config = eval(fs.readFileSync(cfg, {
+		encoding: 'utf8'
+	}));
 process.title = 'fusion manager';
 require('./jsex.js');
 process.on('uncaughtException', function (err) {
