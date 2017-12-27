@@ -24,10 +24,8 @@ define(['common/kernel/kernel'], function (kernel) {
 							if (!silent) {
 								kernel.hint(msgs.hasOwnProperty(data.message) ? msgs[data.message] : data.message);
 							}
-							//reject(data);
-						} else {
-							resolve(data);
 						}
+						resolve(data);
 						if (!silent) {
 							kernel.hideLoading();
 						}
@@ -50,10 +48,8 @@ define(['common/kernel/kernel'], function (kernel) {
 										if (!silent) {
 											kernel.hint(msgs.hasOwnProperty(data.message) ? msgs[data.message] : data.message);
 										}
-										//reject(data);
-									} else {
-										resolve(data);
 									}
+									resolve(data);
 								}
 							} else {
 								if (!silent) {

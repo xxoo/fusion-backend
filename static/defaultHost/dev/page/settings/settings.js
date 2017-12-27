@@ -18,9 +18,12 @@ define(['module', 'common/kernel/kernel', 'site/util/util'], function (module, k
 					type: 'all',
 					len: 4
 				}).then(function (data) {
-					kernel.setSvgPath(captcha, data.path);
+					if (dataType(data) !== 'error') {
+						kernel.setSvgPath(captcha, data.path);
+					}
 					if (i === 99) {
 						//location.reload();
+						//kernel.reloadPage();
 					}
 				});
 			}(i);
