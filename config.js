@@ -1,6 +1,7 @@
-(function () {
+(function (cb) {
 	'use strict';
-	const prefix = (process.platform === 'win32' ? '\\\\?\\pipe\\' : '/tmp/') + 'fusion.',
+	var n, i = 0,
+		prefix = (process.platform === 'win32' ? '\\\\?\\pipe\\' : '/tmp/') + 'fusion.',
 		config = {
 			server: {
 				web: 4443,
@@ -19,6 +20,7 @@
 					}
 				},
 				localhost: {
+					domain: /^localhost$/,
 					api: {
 						serv: prefix + 'api.localhost',
 						deps: ['captcha']
@@ -30,20 +32,39 @@
 				password: '123456'
 			}
 		};
-	for (let n in config.site) {
+	for (n in config.site) {
 		if (config.site[n].hasOwnProperty('api') && config.site[n].api.hasOwnProperty('deps')) {
-			let i = 0;
-			while (i < config.site[n].api.deps.length) {
-				if (config.server.hasOwnProperty(config.site[n].api.deps[i])) {
-					i++;
+			var j = 0;
+			while (j < config.site[n].api.deps.length) {
+				if (config.server.hasOwnProperty(config.site[n].api.deps[j])) {
+					j++;
 				} else {
-					config.site[n].api.deps.splice(i, 1);
+					config.site[n].api.deps.splice(j, 1);
 				}
 			}
 			if (!config.site[n].api.deps.length) {
 				delete config.site[n].api.deps;
 			}
 		}
+		config.site[n].certs = {};
+		getCert(n, 'cert');
+		getCert(n, 'key');
 	}
-	return config;
-})();
+
+	function getCert(site, type) {
+		i++;
+		fs.readFile(path.join(__dirname, 'certs', n, type + '.pem'), {
+			encoding: 'utf8'
+		}, function (err, data) {
+			if (!err) {
+				config.site[site].certs[type] = data;
+			} else {
+				throw err;
+			}
+			i--;
+			if (i === 0) {
+				cb(config);
+			}
+		});
+	}
+})
