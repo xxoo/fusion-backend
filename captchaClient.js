@@ -38,7 +38,7 @@ const net = require('net'),
 	};
 let captchaClient, captchacbs, cfg;
 module.exports = {
-	setConfig: function (c) {
+	start: function (c) {
 		if (!cfg) {
 			cfg = c;
 			startCaptchaClient();

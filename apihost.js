@@ -4,7 +4,7 @@ const fs = require('fs'),
 	net = require('net'),
 	config = require('./config.js');
 require('./jsex.js');
-let setConfig = {},
+let start = {},
 	stats = {},
 	site = process.argv[2],
 	apis = require('./apis/' + site),
@@ -321,8 +321,8 @@ if (process.stdin.isTTY) {
 		if (msg.type === 'updateConfig') {
 			let m = msg.data.parseJsex().value;
 			for (let n in m) {
-				if (setConfig[n]) {
-					setConfig[n](m[n]);
+				if (start[n]) {
+					start[n](m[n]);
 				}
 			}
 		} else if (msg.type === 'stats') {
@@ -349,9 +349,9 @@ if (config.site[site].api.deps) {
 		let n = config.site[site].api.deps[i];
 		if (config.server.hasOwnProperty(n)) {
 			clients[n] = require('./' + n + 'Client.js');
-			setConfig[n] = clients[n].setConfig;
-			delete clients[n].setConfig;
-			setConfig[n](config.server[n]);
+			start[n] = clients[n].start;
+			delete clients[n].start;
+			start[n](config.server[n]);
 		}
 	}
 }

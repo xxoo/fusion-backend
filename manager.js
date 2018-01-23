@@ -17,12 +17,11 @@ let config = require(cfg),
 	apicbs = {},
 	servercbs = {},
 	getSite = function (d) {
-		for (let n in config.site) {
-			if (config.site[n].domain && config.site[n].domain.test(d)) {
-				return n;
-			}
+		if (d) {
+			return config.site.hasOwnProperty(d) ? d : getSite(d.replace(/[^\.]*\.?/, ''));
+		} else {
+			return 'defaultHost';
 		}
-		return 'defaultHost';
 	},
 	isLocal = function (srv) {
 		let t = typeof srv;

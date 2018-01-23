@@ -20,7 +20,6 @@ const fs = require('fs'),
 				}
 			},
 			localhost: {
-				domain: /^localhost$/,
 				api: {
 					serv: prefix + 'api.localhost',
 					deps: ['captcha']

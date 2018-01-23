@@ -76,12 +76,11 @@ let apiid = 0,
 		}
 	},
 	getSite = function (d) {
-		for (let n in config.site) {
-			if (config.site[n].domain && config.site[n].domain.test(d)) {
-				return n;
-			}
+		if (d) {
+			return config.site.hasOwnProperty(d) ? d : getSite(d.replace(/[^\.]*\.?/, ''));
+		} else {
+			return 'defaultHost';
 		}
-		return 'defaultHost';
 	},
 	getHost = function (req) {
 		return req.headers[req.httpVersion >= 2 ? ':authority' : 'host'].replace(/:\d+$/, '');
