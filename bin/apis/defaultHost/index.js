@@ -32,8 +32,8 @@ module.exports = {
 			} else if (params.length > 2 * 1024 * 1024) {
 				return Promise.resolve(Error('file_size_too_large'));
 			} else {
-				uploads[i] = params;
-				return Promise.resolve(i++);
+				uploads[++i] = params;
+				return Promise.resolve(i);
 			}
 		} else {
 			return Promise.resolve(Error('bad_upload_path'));
