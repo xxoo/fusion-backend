@@ -384,6 +384,9 @@ let config = require(cfg),
 				});
 			});
 		},
+		versions: async function() {
+			return Promise.resolve(toJsex(process.versions) + '\n');
+		},
 		help: async function () {
 			return Promise.resolve('available commands: ' + Object.keys(commands).join(' ') + ' exit\n');
 		}
