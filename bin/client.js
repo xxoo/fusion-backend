@@ -6,7 +6,7 @@ if (process.argv[2]) {
 		port: p[1],
 		rejectUnauthorized: false
 	})).on('error', function () {
-		this.destory();
+		this.destroy();
 	}).pipe(process.stdout);
 } else {
 	console.log('please enter a server to connect');
