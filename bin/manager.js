@@ -449,7 +449,7 @@ let config = require(cfg),
 				}
 			};
 		socket.on('error', function () {
-			this.destory();
+			this.destroy();
 		}).write('please enter management password:\n');
 		rl.once('line', function (answer) {
 			if (answer === config.manager.password) {

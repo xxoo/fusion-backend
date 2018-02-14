@@ -75,7 +75,7 @@ let f = '1234567890abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ',
 	}).on('listening', function () {
 		console.log('server started.');
 	}).on('error', function (err) {
-		this.destory();
+		this.destroy();
 		console.error(err.stack);
 	}).on('end', startServer);
 process.on('message', function (msg) {

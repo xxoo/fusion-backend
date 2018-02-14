@@ -296,7 +296,7 @@ if (process.stdin.isTTY) {
 					});
 				};
 			socket.on('error', function () {
-				this.destory();
+				this.destroy();
 			}).on('data', function (data) {
 				data = data.split('\n');
 				for (let i = 0; i < data.length; i++) {
