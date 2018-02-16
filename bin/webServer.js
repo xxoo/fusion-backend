@@ -198,12 +198,15 @@ let apiid = 0,
 			site = getSite(host),
 			cfg = config.site[site],
 			hd = {},
-			p = req.url.replace(/\?.*$/, '').replace(/\\/g, '/'),
+			p = req.url.match(/^([^?]*)(\?.*)?$/),
+			url = p[1] || '',
 			reqtype = stats[site].hasOwnProperty(req.method) ? req.method : 'other';
+		p = p[0];
 		if (p[0] !== '/') {
 			p = '/' + p;
 		}
 		p = path.posix.normalize(p);
+		url = p + url;
 		stats[site][reqtype].active++;
 		res.on('finish', function () {
 			stats[site][reqtype].active--;
@@ -225,11 +228,11 @@ let apiid = 0,
 				hd['access-control-allow-origin'] = req.headers.origin;
 			}
 			if (reqtype === 'GET' || reqtype === 'HEAD') {
-				if (cfg.serverRender && cfg.serverRender.test(req.url)) {
+				if (cfg.serverRender && cfg.serverRender.test(url)) {
 					auth.internal = true;
 					callapi(site, auth, {
 						'!api': 'serverRender',
-						url: req.url
+						url: url
 					}, function (cid, result) {
 						if (!res.finished) {
 							sendCid(cid);
