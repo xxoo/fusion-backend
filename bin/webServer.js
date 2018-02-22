@@ -199,10 +199,10 @@ let apiid = 0,
 			cfg = config.site[site],
 			hd = {},
 			p = req.url.match(/^([^?]*)(\?.*)?$/),
-			url = p[1] || '',
+			url = p[2] || '',
 			reqtype = stats[site].hasOwnProperty(req.method) ? req.method : 'other';
-		p = p[0];
-		if (p[0] !== '/') {
+		p = p[1];
+		if (p[1] !== '/') {
 			p = '/' + p;
 		}
 		p = path.posix.normalize(p);
@@ -600,27 +600,21 @@ new ws.Server({
 		site = getSite(host),
 		auth = {
 			host: host,
-			cid: getCid(req.headers.cookie),
 			agent: req.headers['user-agent'],
 			address: req.socket.address().address
 		};
 	stats[site].ws.active++;
 	client.on('message', function (msg) {
-		let id = msg.parseJsex(),
-			v, t;
-		if (id) {
-			t = id.length + 1;
-			id = id.value;
-			if (typeof id === 'number') {
-				v = msg.substr(t).parseJsex();
-				if (v) {
-					callapi(site, auth, v.value, function (cid, result) {
-						if (client.readyState === ws.OPEN) {
-							auth.cid = cid;
-							client.send(id + '\n' + cid + '\n' + toJsex(result));
-						}
-					});
-				}
+		let data = msg.split('\n');
+		if (data.length === 3) {
+			let v = data[2].parseJsex();
+			if (v) {
+				auth.cid = data[1];
+				callapi(site, auth, v.value, function (cid, result) {
+					if (client.readyState === ws.OPEN) {
+						client.send(data[0] + '\n' + cid + '\n' + toJsex(result));
+					}
+				});
 			}
 		}
 	}).on('close', function () {
