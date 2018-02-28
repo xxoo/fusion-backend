@@ -250,10 +250,26 @@ let apiid = 0,
 								if (!hd['content-type']) {
 									hd['content-type'] = 'text/html';
 								}
-								res.writeHead(result.status, hd);
 								if (reqtype === 'GET') {
-									res.end(result.data, result.encoding);
+									let v = chkEnc(req.headers['accept-encoding']);
+									if (v) {
+										result.data = new Buffer(result.data, result.encoding);
+										if ((cfg.zLen || config.site.defaultHost.zLen) < result.data.length) {
+											hd['content-encoding'] = v;
+											res.writeHead(result.status, hd);
+											v = makeEnc(v);
+											v.pipe(res);
+											v.end(result.data);
+										} else {
+											res.writeHead(result.status, hd);
+											res.end(result.data);
+										}
+									} else {
+										res.writeHead(result.status, hd);
+										res.end(result.data, result.encoding);
+									}
 								} else {
+									res.writeHead(result.status, hd);
 									res.end();
 								}
 							}
@@ -420,17 +436,21 @@ let apiid = 0,
 								hd['content-type'] = 'text/jsex;charset=utf-8';
 								sendCid(cid);
 								auth.cid = cid;
-								result = new Buffer(toJsex(result));
-								if (result.length > (cfg.zLen || config.site.defaultHost.zLen) && v) {
-									hd['content-encoding'] = v;
-									res.writeHead(200, hd);
-									v = makeEnc(v);
-									v.pipe(res);
-									v.end(result);
+								if (v) {
+									result = new Buffer(toJsex(result));
+									if ((cfg.zLen || config.site.defaultHost.zLen) < result.length) {
+										hd['content-encoding'] = v;
+										res.writeHead(200, hd);
+										v = makeEnc(v);
+										v.pipe(res);
+										v.end(result);
+									} else {
+										res.writeHead(200, hd);
+										res.end(result);
+									}
 								} else {
-									hd['content-length'] = result.length;
 									res.writeHead(200, hd);
-									res.end(result);
+									res.end(toJsex(result));
 								}
 							}
 						};
@@ -468,28 +488,22 @@ let apiid = 0,
 					} else {
 						if (cl > 0) {
 							let c, token, i = 0,
-								uploadEnd = function (success) {
+								uploadEnd = function () {
 									callapi(site, auth, {
 										'!api': 'uploadEnd',
 										filename: c,
 										token: token,
-										success: success
+										success: i === cl
 									}, sendResult);
 								};
 							auth.internal = true;
 							while (!c || uploading[c]) {
-								c = Date.now() + Math.random() + '';
+								c = (Date.now() + Math.random()).toString(16);
 							}
 							uploading[c] = fs.createWriteStream(path.join('uploading', c)).on('close', function () {
 								delete uploading[c];
-								if (i === cl) {
-									if (token) {
-										uploadEnd(true);
-									}
-								} else {
-									if (token) {
-										uploadEnd(false);
-									}
+								if (token) {
+									uploadEnd();
 								}
 							});
 							req.pipe(new stream.Transform({
@@ -514,15 +528,14 @@ let apiid = 0,
 									sendResult(cid, result);
 								} else {
 									auth.cid = cid;
-									if (uploading[c]) {
-										token = result;
-									} else {
-										uploadEnd(true);
+									token = result;
+									if (!uploading[c]) {
+										uploadEnd();
 									}
 								}
 							});
 						} else {
-							res.writeHead(400, hd);
+							res.writeHead(411, hd);
 							res.end();
 						}
 					}
