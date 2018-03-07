@@ -167,7 +167,7 @@ let config = require(cfg),
 					});
 					c[id][cbid++] = resolve;
 				} else {
-					resolve(`${id} ${type} is not running.`);
+					resolve(`${id} ${type} is not running.\n`);
 				}
 			});
 		},
@@ -236,7 +236,7 @@ let config = require(cfg),
 				for (let i = 0; i < b.length; i++) {
 					startApi(b[i]);
 				}
-				resolve('new config loaded\n');
+				resolve('new config loaded.\n');
 			});
 		},
 		showlog: async function (name) {
