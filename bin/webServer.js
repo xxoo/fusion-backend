@@ -366,7 +366,7 @@ let apiid = 0,
 										res.end();
 									} else {
 										hd['last-modfied'] = new Date(t).toUTCString();
-										hd['content-type'] = mime.getType(path.extname(p).substr(1));
+										hd['content-type'] = mime.getType(p) || 'application/octet-stream';
 										if (chkEnc(req.headers['accept-encoding']) === 'gzip') {
 											hd['content-encoding'] = 'gzip';
 											fs.stat(c, function (err, stat2) {
@@ -498,7 +498,7 @@ let apiid = 0,
 								};
 							auth.internal = true;
 							while (!c || uploading[c]) {
-								c = (Date.now() + Math.random()).toString(16);
+								c = (Date.now() + Math.random()).toString(36);
 							}
 							uploading[c] = fs.createWriteStream(path.join('uploading', c)).on('close', function () {
 								delete uploading[c];
