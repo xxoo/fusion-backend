@@ -200,7 +200,11 @@ let apiid = 0,
 			hd = {},
 			p = req.url.match(/^([^?]*)(\?.*)?$/),
 			url = p[2] || '',
-			reqtype = stats[site].hasOwnProperty(req.method) ? req.method : 'other';
+			reqtype = stats[site].hasOwnProperty(req.method) ? req.method : 'other',
+			reqend = function () {
+				stats[site][reqtype].active--;
+				stats[site][reqtype].done++;
+			};
 		p = p[1];
 		if (p[1] !== '/') {
 			p = '/' + p;
@@ -208,10 +212,7 @@ let apiid = 0,
 		p = path.posix.normalize(p);
 		url = p + url;
 		stats[site][reqtype].active++;
-		res.on('close', function () {
-			stats[site][reqtype].active--;
-			stats[site][reqtype].done++;
-		});
+		res.on('finish', reqend).on('close', reqend);
 		if (!req.headers.origin || chkOH(cfg.origin, originHost(req.headers.origin), host)) {
 			let auth = {
 					cid: getCid(req.headers.cookie),
