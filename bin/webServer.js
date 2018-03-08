@@ -208,7 +208,7 @@ let apiid = 0,
 		p = path.posix.normalize(p);
 		url = p + url;
 		stats[site][reqtype].active++;
-		res.on('finish', function () {
+		res.on('close', function () {
 			stats[site][reqtype].active--;
 			stats[site][reqtype].done++;
 		});
