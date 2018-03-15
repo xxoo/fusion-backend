@@ -395,7 +395,7 @@ let config = require(cfg),
 		key: config.site.defaultHost.certs.key,
 		cert: config.site.defaultHost.certs.cert,
 		SNICallback: function (host, cb) {
-			cb(null, tls.createSecureContext(config.site[getSite(host)].certs));
+			cb(null, tls.createSecureContext(config.site[getSite(host)].certs || config.site.defaultHost.certs));
 		}
 	}, function (socket) {
 		let rl = readline.createInterface({

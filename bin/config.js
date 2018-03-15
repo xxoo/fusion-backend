@@ -42,13 +42,15 @@ for (let n in config.site) {
 			delete config.site[n].api.deps;
 		}
 	}
-	config.site[n].certs = {
-		cert: fs.readFileSync(path.join('certs', n, 'cert.pem'), {
-			encoding: 'utf8'
-		}),
-		key: fs.readFileSync(path.join('certs', n, 'key.pem'), {
-			encoding: 'utf8'
-		})
-	};
+	try {
+		config.site[n].certs = {
+			cert: fs.readFileSync(path.join('certs', n, 'cert.pem'), {
+				encoding: 'utf8'
+			}),
+			key: fs.readFileSync(path.join('certs', n, 'key.pem'), {
+				encoding: 'utf8'
+			})
+		};
+	} catch (e) {}
 }
 module.exports = config;
