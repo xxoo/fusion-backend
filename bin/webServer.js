@@ -466,10 +466,12 @@ let apiid = 0,
 							let i = 0,
 								bf = new Buffer(cl);
 							req.on('data', function (data) {
-								if (i + data.length <= cl) {
-									data.copy(bf, i, 0, data.length);
+								if (i + data.length > cl) {
+									this.off('data').off('end');
+									res.writeHead(400, hd);
+									res.end();
 								} else {
-									req.destroy();
+									data.copy(bf, i, 0, data.length);
 								}
 								i += data.length;
 							}).on('end', function () {
@@ -509,12 +511,14 @@ let apiid = 0,
 							});
 							req.pipe(new stream.Transform({
 								transform: function (chunk, encoding, next) {
-									this.push(chunk);
 									i += chunk.length;
 									if (i > cl) {
-										req.destroy();
+										req.unpipe(this);
+										this.end();
+									} else {
+										this.push(chunk);
+										next();
 									}
-									next();
 								}
 							})).pipe(uploading[c]);
 							callapi(site, auth, {
@@ -523,9 +527,6 @@ let apiid = 0,
 								length: cl
 							}, function (cid, result) {
 								if (dataType(result) === 'error') {
-									if (uploading[c]) {
-										req.destroy();
-									}
 									sendResult(cid, result);
 								} else {
 									auth.cid = cid;
