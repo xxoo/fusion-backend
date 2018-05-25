@@ -254,7 +254,7 @@ let apiid = 0,
 								if (reqtype === 'GET') {
 									let v = chkEnc(req.headers['accept-encoding']);
 									if (v) {
-										result.data = new Buffer(result.data, result.encoding);
+										result.data = Buffer.from(result.data, result.encoding);
 										if ((cfg.zLen || config.site.defaultHost.zLen) < result.data.length) {
 											hd['content-encoding'] = v;
 											res.writeHead(result.status, hd);
@@ -438,7 +438,7 @@ let apiid = 0,
 								sendCid(cid);
 								auth.cid = cid;
 								if (v) {
-									result = new Buffer(toJsex(result));
+									result = Buffer.from(toJsex(result));
 									if ((cfg.zLen || config.site.defaultHost.zLen) < result.length) {
 										hd['content-encoding'] = v;
 										res.writeHead(200, hd);
@@ -464,7 +464,7 @@ let apiid = 0,
 							res.end();
 						} else {
 							let i = 0,
-								bf = new Buffer(cl);
+								bf = Buffer.alloc(cl);
 							req.on('data', function (data) {
 								if (i + data.length > cl) {
 									this.off('data').off('end');
