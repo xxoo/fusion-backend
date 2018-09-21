@@ -1,14 +1,22 @@
 'use strict';
 const fs = require('fs'),
-	path = require('path'),
 	net = require('net'),
 	config = require('./config.js');
 require('./jsex.js');
 global.site = process.argv[2];
 global.port = config.server.web;
 global.clients = {};
-let apis = require('./apis/' + site),
-	internals = ['securePath', 'serverRender', 'uploadStart', 'uploadEnd'],
+global.pushMessage = function (auth, data) {
+	if (web) {
+		let id = pmid++;
+		web.write(id + '\n' + toJsex(auth) + '\n' + toJsex(data) + '\n');
+		return id;
+	}
+};
+let web,
+	pmid = 0,
+	apis = require('./apis/' + site),
+	internals = ['securePath', 'serverRender', 'uploadStart', 'uploadEnd', 'pushResult', 'socketClosed'],
 	start = {},
 	stats = {},
 	vreg = /^!value(?:\.|$)/,
@@ -26,20 +34,24 @@ let apis = require('./apis/' + site),
 			if (internals.indexOf(apiname) < 0 || auth.internal) {
 				delete op['!api'];
 				delete auth.internal;
-				api(op, auth).then(callback, function (err) {
-					if (dataType(err) === 'error') {
-						err.message = err.stack;
-					}
-					callback(err);
-				}).then(function () {
-					stats[apiname].active--;
-					stats[apiname].done++;
-				});
-			} else {
+				if (callback) {
+					api(op, auth).then(callback, function (err) {
+						if (dataType(err) === 'error') {
+							err.message = err.stack;
+						}
+						callback(err);
+					}).then(function () {
+						stats[apiname].active--;
+						stats[apiname].done++;
+					});
+				} else {
+					api(op, auth);
+				}
+			} else if (callback) {
 				callback(Error('forbidden'));
 				stats[apiname].active--;
 			}
-		} else {
+		} else if (callback) {
 			callback(op);
 		}
 	},
@@ -51,7 +63,7 @@ let apis = require('./apis/' + site),
 				procOp(auth, ops[i], function (result) {
 					results[i] = result;
 					j++;
-					if (j === l) {
+					if (j === l && callback) {
 						callback(results);
 					}
 				});
@@ -63,7 +75,7 @@ let apis = require('./apis/' + site),
 				for (i = 0; i < l; i++) {
 					proc(i);
 				}
-			} else {
+			} else if (callback) {
 				callback(results);
 			}
 		} else if (results === 'object') {
@@ -73,10 +85,10 @@ let apis = require('./apis/' + site),
 				for (i in ops) {
 					proc(i);
 				}
-			} else {
+			} else if (callback) {
 				callback(results);
 			}
-		} else {
+		} else if (callback) {
 			callback(ops);
 		}
 	},
@@ -204,7 +216,7 @@ let apis = require('./apis/' + site),
 			} else {
 				procOp(auth, op, callback);
 			}
-		} else {
+		} else if (callback) {
 			callback(op);
 		}
 	};
@@ -287,42 +299,50 @@ if (process.stdin.isTTY) {
 			return `[${m}] ${stats[m].active} active, ${stats[m].done} done.\n`;
 		},
 		server = net.createServer(function (socket) {
-			let last = [''],
-				callapi = function (i, auth, op) {
-					makeCall(auth, op, function (result) {
-						if (!socket.destroyed) {
-							socket.write(i + '\n' + toJsex(auth.cid) + '\n' + toJsex(result) + '\n');
-						}
-					});
-				};
-			socket.on('error', function () {
-				this.destroy();
-			}).on('data', function (data) {
-				data = data.split('\n');
-				for (let i = 0; i < data.length; i++) {
-					let j = last.length - 1;
-					last[j] += data[i];
-					if (i < data.length - 1) {
-						last[j] = last[j].parseJsex();
-						if (last[j]) {
-							let t = dataType(last[j].value);
-							if ((j === 2 && t === 'object' || t === 'array') || (j === 1 && t === 'object') || (!j && t === 'number')) {
-								last[j] = last[j].value;
-								if (j === 2) {
-									callapi(last[0], last[1], last[2]);
-									last = [''];
+			if (web) {
+				socket.destroy();
+			} else {
+				let last = [''],
+					callapi = function (i, auth, op) {
+						makeCall(auth, op, i === null ? undefined : function (result) {
+							if (!socket.destroyed) {
+								socket.write(i + '\n' + toJsex(auth.cid) + '\n' + toJsex(result) + '\n');
+							}
+						});
+					};
+				web = socket;
+				socket.on('error', function () {
+					console.log('webserver connection lost');
+					//this.destroy();
+				}).on('close', function () {
+					web = undefined;
+				}).on('data', function (data) {
+					data = data.split('\n');
+					for (let i = 0; i < data.length; i++) {
+						let j = last.length - 1;
+						last[j] += data[i];
+						if (i < data.length - 1) {
+							last[j] = last[j].parseJsex();
+							if (last[j]) {
+								let t = dataType(last[j].value);
+								if ((j === 2 && t === 'object' || t === 'array') || (j === 1 && t === 'object') || (!j && t === 'number' || t === 'null')) {
+									last[j] = last[j].value;
+									if (j === 2) {
+										callapi(last[0], last[1], last[2]);
+										last = [''];
+									} else {
+										last[j + 1] = '';
+									}
 								} else {
-									last[j + 1] = '';
+									last[j] = '';
 								}
 							} else {
 								last[j] = '';
 							}
-						} else {
-							last[j] = '';
 						}
 					}
-				}
-			}).setEncoding('utf8');
+				}).setEncoding('utf8');
+			}
 		}).on('listening', function () {
 			console.log('server is started');
 		}).on('error', function (err) {

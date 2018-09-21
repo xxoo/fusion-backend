@@ -8,7 +8,6 @@ const fs = require('fs'),
 	net = require('net'),
 	tls = require('tls'),
 	ws = require('ws'),
-	util = require('util'),
 	mime = require('mime'),
 	config = require('./config.js');
 require('./jsex.js');
@@ -17,7 +16,9 @@ let apiid = 0,
 	compressing = {},
 	uploading = {},
 	stats = {},
+	sockets = {},
 	makeStat = function (n) {
+		sockets[n] = {};
 		stats[n] = {
 			other: {
 				active: 0,
@@ -118,20 +119,20 @@ let apiid = 0,
 			return oh === host;
 		}
 	},
-	loadApi = function (id) {
-		if (apis[id]) {
+	loadApi = function (site) {
+		if (apis[site]) {
 			let err = Error('api_server_connection_lost');
-			for (let n in apis[id].cbs) {
-				apis[id].cbs[n]('', err);
+			for (let n in apis[site].cbs) {
+				apis[site].cbs[n]('', err);
 			}
-			delete apis[id];
-			console.log(`connection of api server for ${id} closed. reconnecting...`);
+			delete apis[site];
+			console.log(`connection of api server for ${site} closed. reconnecting...`);
 		}
-		if (config.site[id].api) {
+		if (config.site[site].api) {
 			let last = [''];
-			net.createConnection(config.site[id].api.serv, function () {
-				console.log(`connected to api server for ${id}.`);
-				apis[id] = {
+			net.createConnection(config.site[site].api.serv, function () {
+				console.log(`connected to api server for ${site}.`);
+				apis[site] = {
 					client: this,
 					cbs: {}
 				};
@@ -144,12 +145,26 @@ let apiid = 0,
 						last[j] = last[j].parseJsex();
 						if (last[j]) {
 							let t = dataType(last[j].value);
-							if ((j === 1 && t === 'string') || (j === 0 && t === 'number') || j === 2) {
+							if ((j === 0 && t === 'number') || (j === 1 && (t === 'string' || t === 'object')) || j === 2) {
 								last[j] = last[j].value;
 								if (j === 2) {
-									if (apis[id].cbs.hasOwnProperty(last[0])) {
-										apis[id].cbs[last[0]](last[1], last[2]);
-										delete apis[id].cbs[last[0]];
+									if (t === 'string') {
+										if (apis[site].cbs.hasOwnProperty(last[0])) {
+											apis[site].cbs[last[0]](last[1], last[2]);
+											delete apis[site].cbs[last[0]];
+										}
+									} else {
+										let result = {
+											'!api': 'pushResult',
+											id: last[0]
+										};
+										if (sockets[site].hasOwnProperty(last[1].skid) && isEqual(last[1], sockets[site][last[1].skid].auth)) {
+											sockets[site][last[1].skid].client.send('"push"\n' + toJsex(last[1].cid) + '\n' + toJsex(last[2]));
+										} else {
+											result.error = Error('no_such_client');
+										}
+										last[1].internal = true;
+										this.write('null\n' + toJsex(last[1]) + '\n' + toJsex(result) + '\n');
 									}
 									last = [''];
 								} else {
@@ -163,13 +178,13 @@ let apiid = 0,
 						}
 					}
 				}
-			}).on('close', loadApi.bind(this, id)).on('error', function (err) {
-				if (apis[id]) {
+			}).on('close', loadApi.bind(this, site)).on('error', function (err) {
+				if (apis[site]) {
 					console.error(err.stack);
 				}
 			}).setEncoding('utf8');
 		} else {
-			console.log(`api config for ${id} is gone.`);
+			console.log(`api config for ${site} is gone.`);
 		}
 	},
 	callapi = function (site, auth, op, cb) {
@@ -570,7 +585,7 @@ process.on('message', function (msg) {
 		let s = config.site,
 			m = msg.data.parseJsex().value;
 		for (let n in m) {
-			if (apis[n] && !isEqual(s[n].api.serv, m[n].api.serv)) {
+			if (apis[n] && (!m[n].api || !isEqual(s[n].api.serv, m[n].api.serv))) {
 				apis[n].client.destroy();
 			}
 			if (!s.hasOwnProperty(n)) {
@@ -583,6 +598,15 @@ process.on('message', function (msg) {
 			if (!s[n].api && m[n].api) {
 				loadApi(n);
 			}
+			if (!m.hasOwnProperty(n)) {
+				for (let o in sockets[n]) {
+					sockets[n][o].client.close();
+				}
+				delete sockets[n];
+				delete stats[n];
+			}
+		}
+		for (let n in sockets) {
 		}
 	} else if (msg.type === 'stats') {
 		let s;
@@ -616,8 +640,13 @@ new ws.Server({
 		auth = {
 			host: host,
 			agent: req.headers['user-agent'],
-			address: req.socket.address().address
+			address: req.socket.address().address,
+			skid: stats[site].ws.active + stats[site].ws.done
 		};
+	sockets[site][auth.skid] = {
+		auth: auth,
+		client: client
+	};
 	stats[site].ws.active++;
 	client.on('message', function (msg) {
 		let data = msg.split('\n');
@@ -632,12 +661,18 @@ new ws.Server({
 				});
 			}
 		}
+	}).on('error', function (err) {
+		//this.close();
+		console.error(err.statk);
 	}).on('close', function () {
+		if (auth.cid) {
+			apis[site].client.write('null\n' + toJsex(auth) + '\n' + toJsex({
+				'!api': 'socketClosed'
+			}) + '\n');
+		}
+		delete sockets[site][auth.skid];
 		stats[site].ws.active--;
 		stats[site].ws.done++;
-	}).on('error', function (err) {
-		this.close();
-		console.error(err.statk);
 	});
 });
 for (let n in config.site) {
