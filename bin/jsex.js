@@ -1,57 +1,59 @@
 ! function () {
 	'use strict';
 	var g = typeof self === 'undefined' ? global : self;
-	String.prototype.JsEncode = function () {
-		return this.replace(/[\n\r\f\v"\\]/g, function (a) {
-			if (a === '\n') {
-				return '\\n';
-			} else if (a === '\r') {
-				return '\\r';
-			} else if (a === '\f') {
-				return '\\f';
-			} else if (a === '\v') {
-				return '\\v';
-			} else if (a === '\'') {
-				return '\\\'';
+	String.prototype.JsEncode = function (q) {
+		var s = this.replace(/[\\"\n\v\f\r]/g, function (a) {
+			if (a === '\\') {
+				return '\\\\';
 			} else if (a === '"') {
 				return '\\"';
-			} else if (a === '\\') {
-				return '\\\\';
+			} else if (a === '\n') {
+				return '\\n';
+			} else if (a === '\v') {
+				return '\\v';
+			} else if (a === '\f') {
+				return '\\f';
+			} else if (a === '\r') {
+				return '\\r';
 			}
 		});
+		if (q) {
+			s = '"' + s + '"';
+		}
+		return s;
 	};
 	String.prototype.JsDecode = function () {
-		return this.replace(/^"|\\\\|\\n|\\r|\\f|\\v|\\'|\\"|"$/g, function (a) {
+		return this.replace(/^"|\\[\\nvfr"]|"$|\\/g, function (a) {
 			if (a === '\\\\') {
 				return '\\';
-			} else if (a === '\\n') {
-				return '\n';
-			} else if (a === '\\r') {
-				return '\r';
-			} else if (a === '\\f') {
-				return '\f';
-			} else if (a === '\\v') {
-				return '\v';
-			} else if (a === '\\\'') {
-				return '\'';
 			} else if (a === '\\"') {
 				return '"';
+			} else if (a === '\\n') {
+				return '\n';
+			} else if (a === '\\v') {
+				return '\v';
+			} else if (a === '\\f') {
+				return '\f';
+			} else if (a === '\\r') {
+				return '\r';
 			} else if (a === '"') {
 				return '';
+			} else {
+				throw SyntaxError('bad escape');
 			}
 		});
 	};
 	String.prototype.RegEncode = function (p) {
 		if (p) {
-			return this.replace(/[\n\r\f\v]/g, function (a) {
+			return this.replace(/[\n\v\f\r]/g, function (a) {
 				if (a === '\n') {
 					return '\\n';
-				} else if (a === '\r') {
-					return '\\r';
-				} else if (a === '\f') {
-					return '\\f';
 				} else if (a === '\v') {
 					return '\\v';
+				} else if (a === '\f') {
+					return '\\f';
+				} else if (a === '\r') {
+					return '\\r';
 				}
 			}).replace(/^(?=\/)/, '\\').replace(/[^\\](\\\\)*(?=\/)/g, '$&\\');
 		} else {
@@ -105,11 +107,16 @@
 				value: +m[0],
 				length: m[0].length
 			};
-		} else if (m = this.match(/^"(?:(?:[^\n\r\f\v"]|\\")*?[^\\])??(?:\\\\)*"/)) {
-			r = {
-				value: m[0].JsDecode(),
-				length: m[0].length
-			};
+		} else if (m = this.match(/^"(?:(?:[^\n\v\f\r"]|\\")*?[^\\])??(?:\\\\)*"/)) {
+			try {
+				r = m[0].JsDecode();
+			} catch (e) {}
+			if (r) {
+				r = {
+					value: r,
+					length: m[0].length
+				};
+			}
 		} else if (this.substr(0, l = 9) === 'new Date(') {
 			m = this.substr(l).parseJsex();
 			if (m && typeof m.value === 'number' && this.charAt(l += m.length) === ')') {
@@ -136,7 +143,7 @@
 					}
 				}
 			}
-		} else if (m = this.match(/^\/((?:\\\\)+|(?:[^\\\/]|[^\/][^\n\r\f\v]*?[^\\])(?:\\\\)*)\/(g?i?m?u?y?)/)) {
+		} else if (m = this.match(/^\/((?:\\\\)+|(?:[^\\\/]|[^\/][^\n\v\f\r]*?[^\\])(?:\\\\)*)\/(g?i?m?u?y?)/)) {
 			try {
 				r = {
 					value: RegExp(m[1], m[2]),
@@ -284,7 +291,7 @@
 		} else {
 			i = dataType(d);
 			if (i === 'string') {
-				s = '"' + d.JsEncode() + '"';
+				s = d.JsEncode(true);
 			} else if (i === 'number' || i === 'boolean') {
 				s = d.toString();
 			} else if (i === 'bigint') {
@@ -334,7 +341,7 @@
 				s += '}';
 			} else if (i === 'symbol') {
 				i = d.length;
-				s = 'Symbol(' + (i > 8 ? '"' + d.substr(7, i - 8).JsEncode() + '"' : '') + ')';
+				s = 'Symbol(' + (i > 8 ? d.substr(7, i - 8).JsEncode(true) : '') + ')';
 			} else {
 				s = 'undefined';
 			}
