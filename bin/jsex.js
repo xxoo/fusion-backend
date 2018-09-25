@@ -2,11 +2,15 @@
 	'use strict';
 	var g = typeof self === 'undefined' ? global : self;
 	String.prototype.JsEncode = function () {
-		return this.replace(/[\n\r"\\]/g, function (a) {
+		return this.replace(/[\n\r\f\v"\\]/g, function (a) {
 			if (a === '\n') {
 				return '\\n';
 			} else if (a === '\r') {
 				return '\\r';
+			} else if (a === '\f') {
+				return '\\f';
+			} else if (a === '\v') {
+				return '\\v';
 			} else if (a === '\'') {
 				return '\\\'';
 			} else if (a === '"') {
@@ -17,13 +21,17 @@
 		});
 	};
 	String.prototype.JsDecode = function () {
-		return this.replace(/^"|\\\\|\\n|\\r|\\'|\\"|"$/g, function (a) {
+		return this.replace(/^"|\\\\|\\n|\\r|\\f|\\v|\\'|\\"|"$/g, function (a) {
 			if (a === '\\\\') {
 				return '\\';
 			} else if (a === '\\n') {
 				return '\n';
 			} else if (a === '\\r') {
 				return '\r';
+			} else if (a === '\\f') {
+				return '\f';
+			} else if (a === '\\v') {
+				return '\v';
 			} else if (a === '\\\'') {
 				return '\'';
 			} else if (a === '\\"') {
@@ -35,11 +43,15 @@
 	};
 	String.prototype.RegEncode = function (p) {
 		if (p) {
-			return this.replace(/[\r\n]/g, function (a) {
-				if (a === '\r') {
-					return '\\r';
-				} else if (a === '\n') {
+			return this.replace(/[\n\r\f\v]/g, function (a) {
+				if (a === '\n') {
 					return '\\n';
+				} else if (a === '\r') {
+					return '\\r';
+				} else if (a === '\f') {
+					return '\\f';
+				} else if (a === '\v') {
+					return '\\v';
 				}
 			}).replace(/^(?=\/)/, '\\').replace(/[^\\](\\\\)*(?=\/)/g, '$&\\');
 		} else {
@@ -93,7 +105,7 @@
 				value: +m[0],
 				length: m[0].length
 			};
-		} else if (m = this.match(/^"(?:(?:[^\n\r"]|\\")*?[^\\])??(?:\\\\)*"/)) {
+		} else if (m = this.match(/^"(?:(?:[^\n\r\f\v"]|\\")*?[^\\])??(?:\\\\)*"/)) {
 			r = {
 				value: m[0].JsDecode(),
 				length: m[0].length
@@ -124,7 +136,7 @@
 					}
 				}
 			}
-		} else if (m = this.match(/^\/((?:\\\\)+|(?:[^\\\/]|[^\/][^\n\r]*?[^\\])(?:\\\\)*)\/(g?i?m?u?y?)/)) {
+		} else if (m = this.match(/^\/((?:\\\\)+|(?:[^\\\/]|[^\/][^\n\r\f\v]*?[^\\])(?:\\\\)*)\/(g?i?m?u?y?)/)) {
 			try {
 				r = {
 					value: RegExp(m[1], m[2]),
