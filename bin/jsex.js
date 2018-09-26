@@ -2,11 +2,13 @@
 	'use strict';
 	var g = typeof self === 'undefined' ? global : self;
 	String.prototype.JsEncode = function (q) {
-		var s = this.replace(/[\\"\n\v\f\r]/g, function (a) {
+		var s = this.replace(/[\\"\b\n\v\f\r]/g, function (a) {
 			if (a === '\\') {
 				return '\\\\';
 			} else if (a === '"') {
 				return '\\"';
+			} else if (a === '\b') {
+				return '\\b';
 			} else if (a === '\n') {
 				return '\\n';
 			} else if (a === '\v') {
@@ -23,11 +25,13 @@
 		return s;
 	};
 	String.prototype.JsDecode = function () {
-		return this.replace(/^"|\\[\\nvfr"]|"$|\\/g, function (a) {
+		return this.replace(/^"|\\[\\bnvfr"]|"$|\\/g, function (a) {
 			if (a === '\\\\') {
 				return '\\';
 			} else if (a === '\\"') {
 				return '"';
+			} else if (a === '\\b') {
+				return '\b';
 			} else if (a === '\\n') {
 				return '\n';
 			} else if (a === '\\v') {
@@ -107,7 +111,7 @@
 				value: +m[0],
 				length: m[0].length
 			};
-		} else if (m = this.match(/^"(?:(?:[^\n\v\f\r"]|\\")*?[^\\])??(?:\\\\)*"/)) {
+		} else if (m = this.match(/^"(?:(?:[^\b\n\v\f\r"]|\\")*?[^\\])??(?:\\\\)*"/)) {
 			try {
 				r = m[0].JsDecode();
 			} catch (e) {}
