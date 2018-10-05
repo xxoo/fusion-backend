@@ -1,7 +1,8 @@
 ! function () {
 	'use strict';
-	var g = typeof self === 'undefined' ? global : self;
-	var arrays = ['array', 'int8array', 'uint8array', 'uint8clampedarray', 'int16array', 'uint16array', 'int32array', 'uint32array', 'bigint64array', 'biguint64array', 'float32array', 'float64array'];
+	var g = typeof self === 'undefined' ? global : self,
+		arrays = ['array', 'int8array', 'uint8array', 'uint8clampedarray', 'int16array', 'uint16array', 'int32array', 'uint32array', 'bigint64array', 'biguint64array', 'float32array', 'float64array'],
+		esobjs = ['date', 'regexp', 'error', 'promise', 'map', 'weakmap', 'set', 'weakset', 'dataview', 'arraybuffer', 'sharedarraybuffer'].concat(arrays);
 	String.prototype.JsEncode = function (q) {
 		var s = this.replace(/[\\"\b\n\v\f\r]/g, function (a) {
 			if (a === '\\') {
@@ -284,7 +285,7 @@
 			t = typeof a;
 			if (t === 'object') {
 				a = Object.prototype.toString.call(a).replace(/^\[object |\]$/g, '').toLowerCase();
-				if (['date', 'regexp', 'error', 'promise', 'map', 'weakmap', 'set', 'weakset', 'dataview', 'arraybuffer', 'sharedarraybuffer', 'array', 'int8array', 'uint8array', 'uint8clampedarray', 'int16array', 'uint16array', 'int32array', 'uint32array', 'bigint64array', 'biguint64array', 'float32array', 'float64array'].indexOf(a) >= 0) {
+				if (esobjs.indexOf(a) >= 0) {
 					t = a;
 				}
 			}
