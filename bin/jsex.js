@@ -1,6 +1,7 @@
 ! function () {
 	'use strict';
 	var g = typeof self === 'undefined' ? global : self;
+	var arrays = ['array', 'int8array', 'uint8array', 'uint8clampedarray', 'int16array', 'uint16array', 'int32array', 'uint32array', 'bigint64array', 'biguint64array', 'float32array', 'float64array'];
 	String.prototype.JsEncode = function (q) {
 		var s = this.replace(/[\\"\b\n\v\f\r]/g, function (a) {
 			if (a === '\\') {
@@ -276,30 +277,35 @@
 		return r;
 	};
 	g.dataType = function (a) {
-		var t = typeof a;
-		if (['boolean', 'string', 'symbol', 'number', 'bigint', 'function', 'undefined'].indexOf(t) < 0) {
-			t = Object.prototype.toString.call(a).replace(/^\[object |\]$/g, '').toLowerCase();
-			if (['date', 'array', 'regexp', 'error', 'null'].indexOf(t) < 0) {
-				return 'object';
-			} else {
-				return t;
-			}
+		var t;
+		if (a == null) {
+			return String(a);
 		} else {
+			t = typeof a;
+			if (t === 'object') {
+				a = Object.prototype.toString.call(a).replace(/^\[object |\]$/g, '').toLowerCase();
+				if (['date', 'regexp', 'error', 'promise', 'map', 'weakmap', 'set', 'weakset', 'dataview', 'arraybuffer', 'sharedarraybuffer', 'array', 'int8array', 'uint8array', 'uint8clampedarray', 'int16array', 'uint16array', 'int32array', 'uint32array', 'bigint64array', 'biguint64array', 'float32array', 'float64array'].indexOf(a) >= 0) {
+					t = a;
+				}
+			}
 			return t;
 		}
 	};
 	g.toJsex = function (d) {
 		var s, i;
-		if (d === null) {
-			s = 'null';
+		if (d == null) {
+			s = String(d);
 		} else {
 			i = dataType(d);
 			if (i === 'string') {
 				s = d.JsEncode(true);
-			} else if (i === 'number' || i === 'boolean') {
+			} else if (['number', 'boolean', 'symbol'].indexOf(i) >= 0) {
 				s = d.toString();
+				if (i === 'symbol' && s.length > 8) {
+					s = 'Symbol(' + s.substr(7, s.length - 8).JsEncode(true) + ')';
+				}
 			} else if (i === 'bigint') {
-				s = d.toString() + 'n';
+				s = d + 'n';
 			} else if (i === 'date') {
 				s = 'new Date(' + d.valueOf() + ')';
 			} else if (i === 'regexp') {
@@ -313,11 +319,11 @@
 				if (d.multiline) {
 					s += 'm';
 				}
-				if (d.sticky) {
-					s += 'y';
-				}
 				if (d.unicode) {
 					s += 'u';
+				}
+				if (d.sticky) {
+					s += 'y';
 				}
 			} else if (i === 'error') {
 				s = d.name + '(';
@@ -325,7 +331,7 @@
 					s += toJsex(d.message);
 				}
 				s += ')';
-			} else if (i === 'array') {
+			} else if (arrays.indexOf(i) >= 0) {
 				s = '[';
 				for (i = 0; i < d.length; i++) {
 					if (i > 0) {
@@ -334,7 +340,7 @@
 					s += toJsex(d[i]);
 				}
 				s += ']';
-			} else if (i === 'object') {
+			} else {
 				s = '{';
 				for (i in d) {
 					if (s.length > 1) {
@@ -343,53 +349,68 @@
 					s += toJsex(i) + ':' + toJsex(d[i]);
 				}
 				s += '}';
-			} else if (i === 'symbol') {
-				i = d.length;
-				s = 'Symbol(' + (i > 8 ? d.substr(7, i - 8).JsEncode(true) : '') + ')';
-			} else {
-				s = 'undefined';
 			}
 		}
 		return s;
 	};
 	g.isEqual = function (o1, o2) {
-		var n, t = dataType(o1);
-		if (t === dataType(o2)) {
-			if (t === 'object') {
-				if (Object.keys(o1).length === Object.keys(o2).length) {
-					for (n in o1) {
-						if (!(n in o2) || !isEqual(o1[n], o2[n])) {
-							return false;
-						}
-					}
-					return true;
-				} else {
-					return false;
-				}
-			} else if (t === 'array') {
-				if (o1.length === o2.length) {
-					for (n = 0; n < o1.length; n++) {
-						if (!isEqual(o1[n], o2[n])) {
-							return false;
-						}
-					}
-					return true;
-				} else {
-					return false;
-				}
-			} else if (t === 'regexp') {
-				return o1.source === o2.source && o1.global === o2.global && o1.ignoreCase === o2.ignoreCase && o1.multiline === o2.multiline && o1.sticky === o2.sticky && o1.unicode === o2.unicode;
-			} else if (t === 'error') {
-				return o1.message = o2.message && o1.name === o2.name;
-			} else if (t === 'date') {
-				return o1.getTime() === o2.getTime();
-			} else if (t === 'symbol') {
-				return o1.toString() === o2.toString();
-			} else {
-				return o1 === o2;
-			}
+		var i, n, t;
+		if (o1 === o2) {
+			return true;
 		} else {
-			return false;
+			t = dataType(o1);
+			if (t === dataType(o2)) {
+				if (t === 'regexp') {
+					return o1.source === o2.source && o1.global === o2.global && o1.ignoreCase === o2.ignoreCase && o1.multiline === o2.multiline && o1.unicode === o2.unicode && o1.sticky === o2.sticky;
+				} else if (t === 'error') {
+					return o1.message = o2.message && o1.name === o2.name;
+				} else if (t === 'date') {
+					return o1.getTime() === o2.getTime();
+				} else if (t === 'symbol') {
+					return o1.toString() === o2.toString();
+				} else if (t === 'object') {
+					n = Object.keys(o1);
+					if (n.length === Object.keys(o2).length) {
+						for (i = 0; i < n.length; i++) {
+							if (!o2.hasOwnProperty(n[i]) || !isEqual(o1[n[i]], o2[n[i]])) {
+								return false;
+							}
+						}
+						return true;
+					} else {
+						return false;
+					}
+				} else if (['map', 'set'].indexOf(t) >= 0) {
+					if (o1.size === o2.size) {
+						i = o1.entries();
+						n = t.next();
+						while (n.value) {
+							if (!o2.has(n.value[0]) || (t === 'map' && !isEqual(n.value[1], o2.get(n.value[0])))) {
+								return false;
+							}
+							n = i.next();
+						}
+						return true;
+					} else {
+						return false;
+					}
+				} else if (arrays.indexOf(t) >= 0) {
+					if (o1.length === o2.length) {
+						for (n = 0; n < o1.length; n++) {
+							if (!isEqual(o1[n], o2[n])) {
+								return false;
+							}
+						}
+						return true;
+					} else {
+						return false;
+					}
+				} else {
+					return false;
+				}
+			} else {
+				return false;
+			}
 		}
 	};
 }();
