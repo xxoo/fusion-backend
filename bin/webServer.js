@@ -104,17 +104,15 @@ let apiid = 0,
 		let d = dataType(reg);
 		if (d === 'regexp') {
 			return reg.test(oh);
-		} else if (d === 'string') {
-			return reg === oh;
 		} else if (d === 'array') {
-			let r = false;
 			for (let i = 0; i < reg.length; i++) {
-				r = r || chkOH(reg[i], oh, host);
-				if (r) {
-					break;
+				if (chkOH(reg[i], oh)) {
+					return true;
 				}
 			}
-			return r;
+			return false;
+		} else if (d === 'string') {
+			return reg === oh;
 		} else {
 			return oh === host;
 		}
@@ -212,7 +210,9 @@ let apiid = 0,
 		let host = getHost(req),
 			site = getSite(host),
 			cfg = config.site[site],
-			hd = {},
+			hd = {
+				vary: 'origin'
+			},
 			p = req.url.match(/^([^?]*)(\?.*)?$/),
 			url = p[2] || '',
 			reqtype = stats[site].hasOwnProperty(req.method) ? req.method : 'other',
@@ -630,7 +630,7 @@ new ws.Server({
 	verifyClient: function (info) {
 		let host = getHost(info.req),
 			site = getSite(host);
-		return Boolean(chkOH(config.site[site].origin, originHost(info.origin), host) && apis[site]);
+		return apis[site] && chkOH(config.site[site].origin, info.origin && originHost(info.origin), host);
 	}
 }).on('error', function (err) {
 	console.error(err.stack);
