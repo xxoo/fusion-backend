@@ -24,7 +24,7 @@ let web,
 		const apiname = op['!api'],
 			api = apis[apiname],
 			vars = op['!vars'];
-		if (dataType(vars) === 'object') {
+		if (dataType(vars) === 'Object') {
 			delete op['!vars'];
 			procOps(auth, vars, function (result) {
 				varsDone(auth, result, op, callback);
@@ -36,7 +36,7 @@ let web,
 				delete auth.internal;
 				if (callback) {
 					api(op, auth).then(callback, function (err) {
-						if (dataType(err) === 'error') {
+						if (dataType(err) === 'Error') {
 							err.message = err.stack;
 						}
 						callback(err);
@@ -68,7 +68,7 @@ let web,
 					}
 				});
 			};
-		if (results === 'array') {
+		if (results === 'Array') {
 			results = [];
 			l = ops.length;
 			if (l > 0) {
@@ -78,7 +78,7 @@ let web,
 			} else if (callback) {
 				callback(results);
 			}
-		} else if (results === 'object') {
+		} else if (results === 'Object') {
 			results = {};
 			l = Object.keys(ops).length;
 			if (l > 0) {
@@ -98,7 +98,7 @@ let web,
 		loop = op['!loop'];
 		i = dataType(loop);
 		delete op['!loop'];
-		if (i === 'array') {
+		if (i === 'Array') {
 			if (typeof op['!key'] === 'string' && vreg.test(op['!key'])) {
 				key = op['!key'].split('.');
 				key.shift();
@@ -116,7 +116,7 @@ let web,
 				makeOps(ops, m, op, loop, i, i);
 			}
 			procOps(auth, ops, callback);
-		} else if (i === 'object') {
+		} else if (i === 'Object') {
 			if (op['!key'] === '!index') {
 				ops = [];
 			} else {
@@ -129,7 +129,7 @@ let web,
 			delete op['!key'];
 			i = 0;
 			for (n in loop) {
-				if (dataType(ops) === 'array') {
+				if (dataType(ops) === 'Array') {
 					m = i;
 				} else if (key) {
 					m = getDeepValue(loop[n], key);
@@ -148,7 +148,7 @@ let web,
 	makeOps = function (ops, m, op, loop, n, idx) {
 		let i;
 		if (!ops.hasOwnProperty(m)) {
-			if (dataType(op) === 'array') {
+			if (dataType(op) === 'Array') {
 				ops[m] = [];
 				for (i = 0; i < op.length; i++) {
 					makeOp(ops, m, op, loop, n, idx, i);
@@ -163,16 +163,16 @@ let web,
 		}
 	},
 	makeOp = function (ops, m, op, loop, n, idx, i) {
-		let k = dataType(op[i]);
 		if (op[i] === '!key') {
 			ops[m][i] = n;
 		} else if (op[i] === '!index') {
 			ops[m][i] = idx;
 		} else if (typeof op[i] === 'string' && vreg.test(op[i])) {
+			let k;
 			k = op[i].split('.');
 			k[0] = n;
 			ops[m][i] = getDeepValue(loop, k);
-		} else if (k === 'array' || k === 'object') {
+		} else if (['Object', 'Array'].indexOf(dataType(op[i])) >= 0) {
 			makeOps(ops[m], i, op[i], loop, n, idx);
 		} else {
 			ops[m][i] = op[i];
@@ -188,7 +188,7 @@ let web,
 	},
 	procParams = function (op, vars) {
 		let n;
-		if (dataType(op) === 'array') {
+		if (dataType(op) === 'Array') {
 			for (n = 0; n < op.length; n++) {
 				procParam(op, vars, n);
 			}
@@ -204,14 +204,14 @@ let web,
 			if (op[n][0] === '!' && op[n] !== '!index' && op !== '!key' && !vreg.test(op[n])) {
 				op[n] = getDeepValue(vars, op[n].substr(1).split('.'));
 			}
-		} else if (t === 'array' || t === 'object') {
+		} else if (['Object', 'Array'].indexOf(t) >= 0) {
 			procParams(op[n], vars);
 		}
 	},
 	makeCall = function (auth, op, callback) {
 		let t = dataType(op);
-		if (t === 'array' || t === 'object') {
-			if (t === 'array' || !op.hasOwnProperty('!api')) {
+		if (['Object', 'Array'].indexOf(t) >= 0) {
+			if (t === 'Array' || !op.hasOwnProperty('!api')) {
 				procOps(auth, op, callback);
 			} else {
 				procOp(auth, op, callback);
@@ -254,7 +254,7 @@ if (process.stdin.isTTY) {
 				console.log('please enter auth data or cid:');
 				rl.once('line', function (answer) {
 					auth = answer.parseJsex();
-					if (auth && dataType(auth.value) === 'object') {
+					if (auth && dataType(auth.value) === 'Object') {
 						auth = auth.value;
 						console.log('auth data received.');
 					} else {
@@ -325,7 +325,7 @@ if (process.stdin.isTTY) {
 							last[j] = last[j].parseJsex();
 							if (last[j]) {
 								let t = dataType(last[j].value);
-								if ((j === 2 && t === 'object' || t === 'array') || (j === 1 && t === 'object') || (!j && t === 'number' || t === 'null')) {
+								if ((j === 2 && ['Object', 'Array'].indexOf(t) >= 0) || (j === 1 && t === 'Object') || (!j && ['number', 'null'].indexOf(t) >= 0)) {
 									last[j] = last[j].value;
 									if (j === 2) {
 										callapi(last[0], last[1], last[2]);

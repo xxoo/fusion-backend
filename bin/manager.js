@@ -33,8 +33,7 @@ let config = require(cfg),
 		}
 	},
 	isLocal = function (srv) {
-		let t = typeof srv;
-		return t === 'string' || t === 'number' || srv.host === '0.0.0.0' || srv.host === '127.0.0.1';
+		return ['string', 'number'].indexOf(typeof srv) >= 0 || srv.host === '0.0.0.0' || srv.host === '127.0.0.1';
 	},
 	writeSocket = function (data) {
 		let i = 0;

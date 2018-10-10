@@ -102,9 +102,9 @@ let apiid = 0,
 	},
 	chkOH = function (reg, oh, host) {
 		let d = dataType(reg);
-		if (d === 'regexp') {
+		if (d === 'RegExp') {
 			return reg.test(oh);
-		} else if (d === 'array') {
+		} else if (d === 'Array') {
 			for (let i = 0; i < reg.length; i++) {
 				if (chkOH(reg[i], oh)) {
 					return true;
@@ -143,7 +143,7 @@ let apiid = 0,
 						last[j] = last[j].parseJsex();
 						if (last[j]) {
 							let t = dataType(last[j].value);
-							if ((j === 0 && t === 'number') || (j === 1 && (t === 'string' || t === 'object')) || j === 2) {
+							if ((j === 0 && t === 'number') || (j === 1 && ['Object', 'string'].indexOf(t) >= 0) || j === 2) {
 								last[j] = last[j].value;
 								if (j === 2) {
 									if (t === 'string') {
@@ -252,7 +252,7 @@ let apiid = 0,
 					}, function (cid, result) {
 						if (!res.finished) {
 							sendCid(cid);
-							if (dataType(result) === 'error') {
+							if (dataType(result) === 'Error') {
 								res.writeHead(500, hd);
 								if (reqtype === 'GET') {
 									res.end(result.message);
@@ -427,7 +427,7 @@ let apiid = 0,
 						}, function (cid, result) {
 							if (!res.finished) {
 								sendCid(cid);
-								if (dataType(result) === 'error') {
+								if (dataType(result) === 'Error') {
 									res.writeHead(401, hd);
 									if (reqtype === 'GET') {
 										res.end(result.message);
@@ -541,7 +541,7 @@ let apiid = 0,
 								path: p,
 								length: cl
 							}, function (cid, result) {
-								if (dataType(result) === 'error') {
+								if (dataType(result) === 'Error') {
 									sendResult(cid, result);
 								} else {
 									auth.cid = cid;
