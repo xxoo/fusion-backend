@@ -4,6 +4,8 @@ const fs = require('fs'),
 	fsext = require('./fsext.js'),
 	stream = require('stream'),
 	zlib = require('zlib'),
+	http = require('http'),
+	https = require('https'),
 	http2 = require('http2'),
 	net = require('net'),
 	tls = require('tls'),
@@ -199,6 +201,30 @@ let apiid = 0,
 		}
 		server.listen(config.server.web);
 	},
+	findproxy = function (url, proxy) {
+		if (proxy) {
+			for (let n in proxy) {
+				if (typeof proxy[n] === 'string') {
+					if (url.length >= proxy[n] && url.substr(0, proxy[n].length) === proxy[n]) {
+						return parseServer(n);
+					}
+				} else if (proxy[n].test(url)) {
+					return parseServer(n);
+				}
+			}
+		}
+	},
+	parseServer = function (str) {
+		let r = str.match(/^http(s?):\/\/([^\/:]+)(?::(\d+))?$/);
+		if (r) {
+			delete r.index;
+			delete r.source;
+			r.shift();
+			r[2] = r[2] ? parseInt(r[2]) : r[0] ? 443 : 80;
+			r[0] = r[0] ? https : http;
+		}
+		return r;
+	},
 	server = http2.createSecureServer({
 		allowHTTP1: true,
 		key: config.site.defaultHost.certs.key,
@@ -210,367 +236,406 @@ let apiid = 0,
 		let host = getHost(req),
 			site = getSite(host),
 			cfg = config.site[site],
-			hd = {
-				vary: 'origin'
-			},
-			p = req.url.match(/^([^?]*)(\?.*)?$/),
-			url = p[2] || '',
+			proxy = findproxy(req.url, cfg.forward),
 			reqtype = stats[site].hasOwnProperty(req.method) ? req.method : 'other',
 			reqend = function () {
 				stats[site][reqtype].active--;
 				stats[site][reqtype].done++;
 			};
-		p = p[1];
-		if (p[1] !== '/') {
-			p = '/' + p;
-		}
-		p = path.posix.normalize(p);
-		url = p + url;
 		stats[site][reqtype].active++;
 		res.on('finish', reqend).on('close', reqend);
-		if (!req.headers.origin || chkOH(cfg.origin, originHost(req.headers.origin), host)) {
-			let auth = {
-					cid: getCid(req.headers.cookie),
+		if (proxy) {
+			let req2 = proxy[0].request({
+				host: proxy[1],
+				port: proxy[2],
+				path: req.url,
+				method: req.method,
+				setHost: false,
+				headers: {
 					host: host,
-					agent: req.headers['user-agent'],
-					address: req.socket.address().address
-				},
-				sendCid = function (cid) {
-					if (cid) {
-						hd['set-cookie'] = 'cid=' + escape(cid) + ';path=/;expires=Fri, 31-Dec-9999 23:59:59 GMT';
+					'x-forwarded-for': req.headers.hasOwnProperty('x-forwarded-for') ? req.headers['x-forwarded-for'] + ', ' + req.socket.remoteAddress : req.socket.remoteAddress
+				}
+			}, function (res2) {
+				if (res2.headers['access-control-allow-origin'] === 'http' + (proxy[0] === https ? 's' : '') + '://' + host + (proxy[3] == 443 ? '' : ':' + proxy[3])) {
+					res2.headers['access-control-allow-origin'] = res2.headers['access-control-allow-origin'].replace(/(:\d+)?$/, config.server.web == 443 ? '' : config.server.web);
+				}
+				res.writeHead(res2.statusCode, res2.headers);
+				res2.pipe(res);
+			}).on('error', function (err) {
+				if (!res.headersSent) {
+					res.writeHead(502);
+				}
+				res.end();
+			});
+			for (let n in req.headers) {
+				if (n === 'referer' || n === 'origin') {
+					let v = req.headers[n],
+						oh = 'https://' + host + (config.server.web == 443 ? '' : ':' + config.server.web);
+					if (v === oh || (v.length > oh.length && v.substr(0, oh.length + 1) === oh + '/')) {
+						v = 'http' + (proxy[0] === https ? 's' : '') + '://' + host + (proxy[3] == 443 ? '' : ':' + proxy[3]) + v.substr(oh.length);
 					}
-				};
-			if (req.headers.origin) {
-				hd['access-control-allow-origin'] = req.headers.origin;
+					req2.setHeader(n, v);
+				} else if (['host', 'connection', ':method', ':scheme', ':authority', ':path'].indexOf(n) < 0) {
+					req2.setHeader(n, req.headers[n]);
+				}
 			}
-			if (reqtype === 'GET' || reqtype === 'HEAD') {
-				if (cfg.serverRender && cfg.serverRender.test(url)) {
-					auth.internal = true;
-					callapi(site, auth, {
-						'!api': 'serverRender',
-						url: url
-					}, function (cid, result) {
-						if (!res.finished) {
-							sendCid(cid);
-							if (dataType(result) === 'Error') {
-								res.writeHead(500, hd);
-								if (reqtype === 'GET') {
-									res.end(result.message);
-								} else {
-									res.end();
-								}
-							} else {
-								for (let n in result.head) {
-									hd[n] = result.head[n];
-								}
-								if (!hd['content-type']) {
-									hd['content-type'] = 'text/html';
-								}
-								if (reqtype === 'GET') {
-									let v = chkEnc(req.headers['accept-encoding']);
-									if (v) {
-										result.data = Buffer.from(result.data, result.encoding);
-										if ((cfg.zLen || config.site.defaultHost.zLen) < result.data.length) {
-											hd['content-encoding'] = v;
-											res.writeHead(result.status, hd);
-											v = makeEnc(v);
-											v.pipe(res);
-											v.end(result.data);
-										} else {
-											res.writeHead(result.status, hd);
-											res.end(result.data);
-										}
-									} else {
-										res.writeHead(result.status, hd);
-										res.end(result.data, result.encoding);
-									}
-								} else {
-									res.writeHead(result.status, hd);
-									res.end();
-								}
-							}
+			req.pipe(req2);
+		} else {
+			let hd = {
+					vary: 'origin'
+				},
+				p = req.url.match(/^([^?]*)(\?.*)?$/),
+				url = p[2] || '';
+			p = p[1];
+			if (p[1] !== '/') {
+				p = '/' + p;
+			}
+			p = path.posix.normalize(p);
+			url = p + url;
+			if (!req.headers.origin || chkOH(cfg.origin, originHost(req.headers.origin), host)) {
+				let auth = {
+						cid: getCid(req.headers.cookie),
+						host: host,
+						agent: req.headers['user-agent'],
+						address: req.socket.address().address
+					},
+					sendCid = function (cid) {
+						if (cid) {
+							hd['set-cookie'] = 'cid=' + escape(cid) + ';path=/;expires=Fri, 31-Dec-9999 23:59:59 GMT';
 						}
-					});
-				} else {
-					let procStaticFile = function () {
-						let c = path.join('cache', site, p.substr(1) + '.gz'),
-							sendFile = function (p, stat, start, end) {
-								if (!res.finished) {
-									if (start === undefined || start < 0) {
-										start = 0;
-									} else if (start >= stat.size) {
-										start = stat.size - 1;
-									}
-									if (end === undefined || end >= stat.size) {
-										end = stat.size - 1;
-									} else if (end < 0) {
-										end = 0;
-									}
-									if (end < start) {
-										end = start;
-									}
-									hd['content-length'] = end - start + 1;
-									if (start > 0 || end < stat.size - 1) {
-										hd['content-range'] = 'bytes=' + start + '-' + end + '/' + stat.size;
-										res.writeHead(206, hd);
-									} else {
-										res.writeHead(200, hd);
-									}
-									if (reqtype === 'GET') {
-										fs.createReadStream(p, {
-											start: start,
-											end: end
-										}).pipe(res);
-									} else {
-										res.end();
-									}
-								}
-							},
-							checkRange = function (p, stat) {
-								if (req.headers.range) {
-									let d = req.headers.range.match(/^bytes=(\d*)-(\d*)$/);
-									if (d) {
-										if (!d[1]) {
-											d[1] = 0;
-										}
-										if (d[2]) {
-											sendFile(p, stat, d[1] | 0, d[2] | 0);
-										} else {
-											sendFile(p, stat, d[1] | 0);
-										}
-									} else {
-										sendFile(p, stat);
-									}
-								} else {
-									sendFile(p, stat);
-								}
-							},
-							compress = function (p, t, c) {
-								if (!res.finished) {
-									res.writeHead(200, hd);
-									if (reqtype === 'GET') {
-										let enc = makeEnc('gzip');
-										fs.createReadStream(p).pipe(enc).pipe(res);
-										if (c && !compressing.hasOwnProperty(c)) {
-											compressing[c] = fs.createWriteStream(c).on('close', function () {
-												t = new Date(t);
-												fs.utimes(c, t, t, function (err) {
-													delete compressing[c];
-												});
-											});
-											enc.pipe(compressing[c]);
-										}
-									} else {
-										res.end();
-									}
-								}
-							};
-						p = path.join('static', site, p.substr(1));
-						fs.stat(p, function (err, stat) {
-							if (!res.finished) {
-								if (err) {
-									res.writeHead(404, hd);
-									res.end();
-								} else if (stat.isDirectory()) {
-									hd.location = req.url.replace(/(\?.*)?$/, '/$1');
-									res.writeHead(302, hd);
-									res.end();
-								} else {
-									let t = Math.floor(Math.max(stat.mtimeMs, stat.ctimeMs) / 1000) * 1000;
-									if (req.headers['if-modfied-since'] && t < new Date(req.headers['if-modfied-since']).valueOf()) {
-										res.writeHead(304, hd);
-										res.end();
-									} else {
-										hd['last-modfied'] = new Date(t).toUTCString();
-										hd['content-type'] = mime.getType(p) || 'application/octet-stream';
-										if (chkEnc(req.headers['accept-encoding']) === 'gzip') {
-											hd['content-encoding'] = 'gzip';
-											fs.stat(c, function (err, stat2) {
-												if (!res.finished) {
-													if (err) {
-														fsext.md(path.dirname(c)).then(function () {
-															compress(p, t, c);
-														}, function (err) {
-															compress(p, t);
-														});
-													} else if (stat2.isDirectory()) {
-														fsext.rd(c).then(function () {
-															compress(p, t, c);
-														}, function (err) {
-															compress(p, t);
-														});
-													} else {
-														if (stat2.mtimeMs === t) {
-															checkRange(c, stat2);
-														} else {
-															compress(p, t, c);
-														}
-													}
-												}
-											});
-										} else {
-											checkRange(p, stat);
-										}
-									}
-								}
-							}
-						});
 					};
-					if (p[p.length - 1] === '/') {
-						p += cfg.index || config.site.defaultHost.index;
-					}
-					if (cfg.securePath && cfg.securePath.test(p)) {
+				if (req.headers.origin) {
+					hd['access-control-allow-origin'] = req.headers.origin;
+				}
+				if (reqtype === 'GET' || reqtype === 'HEAD') {
+					if (cfg.serverRender && cfg.serverRender.test(url)) {
 						auth.internal = true;
 						callapi(site, auth, {
-							'!api': 'securePath',
-							path: p
+							'!api': 'serverRender',
+							url: url
 						}, function (cid, result) {
 							if (!res.finished) {
 								sendCid(cid);
 								if (dataType(result) === 'Error') {
-									res.writeHead(401, hd);
+									res.writeHead(500, hd);
 									if (reqtype === 'GET') {
 										res.end(result.message);
 									} else {
 										res.end();
 									}
 								} else {
-									procStaticFile();
+									for (let n in result.head) {
+										hd[n] = result.head[n];
+									}
+									if (!hd['content-type']) {
+										hd['content-type'] = 'text/html';
+									}
+									if (reqtype === 'GET') {
+										let v = chkEnc(req.headers['accept-encoding']);
+										if (v) {
+											result.data = Buffer.from(result.data, result.encoding);
+											if ((cfg.zLen || config.site.defaultHost.zLen) < result.data.length) {
+												hd['content-encoding'] = v;
+												res.writeHead(result.status, hd);
+												v = makeEnc(v);
+												v.pipe(res);
+												v.end(result.data);
+											} else {
+												res.writeHead(result.status, hd);
+												res.end(result.data);
+											}
+										} else {
+											res.writeHead(result.status, hd);
+											res.end(result.data, result.encoding);
+										}
+									} else {
+										res.writeHead(result.status, hd);
+										res.end();
+									}
 								}
 							}
 						});
 					} else {
-						procStaticFile();
-					}
-				}
-			} else if (reqtype === 'POST') {
-				if (apis[site]) {
-					let cl = req.headers['content-length'] | 0,
-						sendResult = function (cid, result) {
-							if (!res.finished) {
-								let v = chkEnc(req.headers['accept-encoding']);
-								hd['content-type'] = 'text/jsex;charset=utf-8';
-								sendCid(cid);
-								auth.cid = cid;
-								if (v) {
-									result = Buffer.from(toJsex(result));
-									if ((cfg.zLen || config.site.defaultHost.zLen) < result.length) {
-										hd['content-encoding'] = v;
-										res.writeHead(200, hd);
-										v = makeEnc(v);
-										v.pipe(res);
-										v.end(result);
+						let procStaticFile = function () {
+							let c = path.join('cache', site, p.substr(1) + '.gz'),
+								sendFile = function (p, stat, start, end) {
+									if (!res.finished) {
+										if (start === undefined || start < 0) {
+											start = 0;
+										} else if (start >= stat.size) {
+											start = stat.size - 1;
+										}
+										if (end === undefined || end >= stat.size) {
+											end = stat.size - 1;
+										} else if (end < 0) {
+											end = 0;
+										}
+										if (end < start) {
+											end = start;
+										}
+										hd['content-length'] = end - start + 1;
+										if (start > 0 || end < stat.size - 1) {
+											hd['content-range'] = 'bytes=' + start + '-' + end + '/' + stat.size;
+											res.writeHead(206, hd);
+										} else {
+											res.writeHead(200, hd);
+										}
+										if (reqtype === 'GET') {
+											fs.createReadStream(p, {
+												start: start,
+												end: end
+											}).pipe(res);
+										} else {
+											res.end();
+										}
+									}
+								},
+								checkRange = function (p, stat) {
+									if (req.headers.range) {
+										let d = req.headers.range.match(/^bytes=(\d*)-(\d*)$/);
+										if (d) {
+											if (!d[1]) {
+												d[1] = 0;
+											}
+											if (d[2]) {
+												sendFile(p, stat, d[1] | 0, d[2] | 0);
+											} else {
+												sendFile(p, stat, d[1] | 0);
+											}
+										} else {
+											sendFile(p, stat);
+										}
 									} else {
+										sendFile(p, stat);
+									}
+								},
+								compress = function (p, t, c) {
+									if (!res.finished) {
 										res.writeHead(200, hd);
-										res.end(result);
+										if (reqtype === 'GET') {
+											let enc = makeEnc('gzip');
+											fs.createReadStream(p).pipe(enc).pipe(res);
+											if (c && !compressing.hasOwnProperty(c)) {
+												compressing[c] = fs.createWriteStream(c).on('close', function () {
+													t = new Date(t);
+													fs.utimes(c, t, t, function (err) {
+														delete compressing[c];
+													});
+												});
+												enc.pipe(compressing[c]);
+											}
+										} else {
+											res.end();
+										}
 									}
-								} else {
-									res.writeHead(200, hd);
-									res.end(toJsex(result));
-								}
-							}
-						};
-					if (p === '/') {
-						if (cl <= 0) {
-							res.writeHead(411, hd);
-							res.end();
-						} else if (cl > (cfg.postLen || config.site.defaultHost.postLen)) {
-							res.writeHead(413, hd);
-							res.end();
-						} else {
-							let i = 0,
-								bf = Buffer.alloc(cl);
-							req.on('data', function (data) {
-								if (i + data.length > cl) {
-									this.off('data').off('end');
-									res.writeHead(400, hd);
-									res.end();
-								} else {
-									data.copy(bf, i, 0, data.length);
-								}
-								i += data.length;
-							}).on('end', function () {
-								let v;
-								if (i === cl) {
-									v = bf.toString('utf8', 0, i).parseJsex();
-									if (v) {
-										callapi(site, auth, v.value, sendResult);
-									}
-								}
-								if (!v && !res.finished) {
-									res.writeHead(400, hd);
-									res.end();
-								}
-							});
-						}
-					} else {
-						if (cl > 0) {
-							let c, token, i = 0,
-								uploadEnd = function () {
-									callapi(site, auth, {
-										'!api': 'uploadEnd',
-										filename: c,
-										token: token,
-										success: i === cl
-									}, sendResult);
 								};
-							auth.internal = true;
-							while (!c || uploading[c]) {
-								c = (Date.now() + Math.random()).toString(36);
-							}
-							uploading[c] = fs.createWriteStream(path.join('uploading', c)).on('close', function () {
-								delete uploading[c];
-								if (token) {
-									uploadEnd();
-								}
-							});
-							req.pipe(new stream.Transform({
-								transform: function (chunk, encoding, next) {
-									i += chunk.length;
-									if (i > cl) {
-										req.unpipe(this);
-										this.end();
+							p = path.join('static', site, p.substr(1));
+							fs.stat(p, function (err, stat) {
+								if (!res.finished) {
+									if (err) {
+										res.writeHead(404, hd);
+										res.end();
+									} else if (stat.isDirectory()) {
+										hd.location = req.url.replace(/(\?.*)?$/, '/$1');
+										res.writeHead(302, hd);
+										res.end();
 									} else {
-										this.push(chunk);
-										next();
+										let t = Math.floor(Math.max(stat.mtimeMs, stat.ctimeMs) / 1000) * 1000;
+										if (req.headers['if-modfied-since'] && t < new Date(req.headers['if-modfied-since']).valueOf()) {
+											res.writeHead(304, hd);
+											res.end();
+										} else {
+											hd['last-modfied'] = new Date(t).toUTCString();
+											hd['content-type'] = mime.getType(p) || 'application/octet-stream';
+											if (chkEnc(req.headers['accept-encoding']) === 'gzip') {
+												hd['content-encoding'] = 'gzip';
+												fs.stat(c, function (err, stat2) {
+													if (!res.finished) {
+														if (err) {
+															fsext.md(path.dirname(c)).then(function () {
+																compress(p, t, c);
+															}, function (err) {
+																compress(p, t);
+															});
+														} else if (stat2.isDirectory()) {
+															fsext.rd(c).then(function () {
+																compress(p, t, c);
+															}, function (err) {
+																compress(p, t);
+															});
+														} else {
+															if (stat2.mtimeMs === t) {
+																checkRange(c, stat2);
+															} else {
+																compress(p, t, c);
+															}
+														}
+													}
+												});
+											} else {
+												checkRange(p, stat);
+											}
+										}
 									}
 								}
-							})).pipe(uploading[c]);
+							});
+						};
+						if (p[p.length - 1] === '/') {
+							p += cfg.index || config.site.defaultHost.index;
+						}
+						if (cfg.securePath && cfg.securePath.test(p)) {
+							auth.internal = true;
 							callapi(site, auth, {
-								'!api': 'uploadStart',
-								path: p,
-								length: cl
+								'!api': 'securePath',
+								path: p
 							}, function (cid, result) {
-								if (dataType(result) === 'Error') {
-									sendResult(cid, result);
-								} else {
+								if (!res.finished) {
+									sendCid(cid);
+									if (dataType(result) === 'Error') {
+										res.writeHead(401, hd);
+										if (reqtype === 'GET') {
+											res.end(result.message);
+										} else {
+											res.end();
+										}
+									} else {
+										procStaticFile();
+									}
+								}
+							});
+						} else {
+							procStaticFile();
+						}
+					}
+				} else if (reqtype === 'POST') {
+					if (apis[site]) {
+						let cl = req.headers['content-length'] | 0,
+							sendResult = function (cid, result) {
+								if (!res.finished) {
+									let v = chkEnc(req.headers['accept-encoding']);
+									hd['content-type'] = 'text/jsex;charset=utf-8';
+									sendCid(cid);
 									auth.cid = cid;
-									token = result;
-									if (!uploading[c]) {
+									if (v) {
+										result = Buffer.from(toJsex(result));
+										if ((cfg.zLen || config.site.defaultHost.zLen) < result.length) {
+											hd['content-encoding'] = v;
+											res.writeHead(200, hd);
+											v = makeEnc(v);
+											v.pipe(res);
+											v.end(result);
+										} else {
+											res.writeHead(200, hd);
+											res.end(result);
+										}
+									} else {
+										res.writeHead(200, hd);
+										res.end(toJsex(result));
+									}
+								}
+							};
+						if (p === '/') {
+							if (cl <= 0) {
+								res.writeHead(411, hd);
+								res.end();
+							} else if (cl > (cfg.postLen || config.site.defaultHost.postLen)) {
+								res.writeHead(413, hd);
+								res.end();
+							} else {
+								let i = 0,
+									bf = Buffer.alloc(cl);
+								req.on('data', function (data) {
+									if (i + data.length > cl) {
+										this.off('data').off('end');
+										res.writeHead(400, hd);
+										res.end();
+									} else {
+										data.copy(bf, i, 0, data.length);
+									}
+									i += data.length;
+								}).on('end', function () {
+									let v;
+									if (i === cl) {
+										v = bf.toString('utf8', 0, i).parseJsex();
+										if (v) {
+											callapi(site, auth, v.value, sendResult);
+										}
+									}
+									if (!v && !res.finished) {
+										res.writeHead(400, hd);
+										res.end();
+									}
+								});
+							}
+						} else {
+							if (cl > 0) {
+								let c, token, i = 0,
+									uploadEnd = function () {
+										callapi(site, auth, {
+											'!api': 'uploadEnd',
+											filename: c,
+											token: token,
+											success: i === cl
+										}, sendResult);
+									};
+								auth.internal = true;
+								while (!c || uploading[c]) {
+									c = (Date.now() + Math.random()).toString(36);
+								}
+								uploading[c] = fs.createWriteStream(path.join('uploading', c)).on('close', function () {
+									delete uploading[c];
+									if (token) {
 										uploadEnd();
 									}
-								}
-							});
-						} else {
-							res.writeHead(411, hd);
-							res.end();
+								});
+								req.pipe(new stream.Transform({
+									transform: function (chunk, encoding, next) {
+										i += chunk.length;
+										if (i > cl) {
+											req.unpipe(this);
+											this.end();
+										} else {
+											this.push(chunk);
+											next();
+										}
+									}
+								})).pipe(uploading[c]);
+								callapi(site, auth, {
+									'!api': 'uploadStart',
+									path: p,
+									length: cl
+								}, function (cid, result) {
+									if (dataType(result) === 'Error') {
+										sendResult(cid, result);
+									} else {
+										auth.cid = cid;
+										token = result;
+										if (!uploading[c]) {
+											uploadEnd();
+										}
+									}
+								});
+							} else {
+								res.writeHead(411, hd);
+								res.end();
+							}
 						}
+					} else {
+						res.writeHead(403, hd);
+						res.end();
 					}
+				} else if (reqtype === 'OPTIONS') {
+					hd['access-control-allow-methods'] = 'POST, GET, HEAD, OPTIONS';
+					res.writeHead(200, hd);
+					res.end();
 				} else {
-					res.writeHead(403, hd);
+					res.writeHead(405, hd);
 					res.end();
 				}
-			} else if (reqtype === 'OPTIONS') {
-				hd['access-control-allow-methods'] = 'POST, GET, HEAD, OPTIONS';
-				res.writeHead(200, hd);
-				res.end();
 			} else {
-				res.writeHead(405, hd);
+				res.writeHead(403, hd);
 				res.end();
 			}
-		} else {
-			res.writeHead(403, hd);
-			res.end();
 		}
 	}).on('error', function (err) {
 		console.error(err.stack);
@@ -606,8 +671,7 @@ process.on('message', function (msg) {
 				delete stats[n];
 			}
 		}
-		for (let n in sockets) {
-		}
+		for (let n in sockets) {}
 	} else if (msg.type === 'stats') {
 		let s;
 		if (stats.hasOwnProperty(msg.data)) {
