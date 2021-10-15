@@ -1,6 +1,6 @@
 #!/bin/sh
 basedir=`dirname "$0"`
 while true;
-	do node "$basedir/manager.js";
+	do node $@ "$basedir/lib/manager.js";
 	test $? -gt 128 && break;
 done
